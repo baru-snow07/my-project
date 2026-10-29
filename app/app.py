@@ -92,7 +92,8 @@ c[2].metric('Actively exploited CVE', f'{(f.tier == TIERS[1]).sum():,}')
 c[3].metric('Exposed critical service', f'{(f.tier == TIERS[2]).sum():,}')
 
 view = f.head(500).copy()
-view['top reason'] = view.apply(lambda r: (reasons(r) or [(0, '')])[0][1], axis=1)
+# A list (not DataFrame.apply) so an empty filter result gives an empty column instead of crashing.
+view['top reason'] = [(reasons(r) or [(0, '')])[0][1] for _, r in view.iterrows()]
 picked = st.dataframe(
     view[['company', 'risk_score', 'tier', 'sector', 'country', 'ips', 'top reason']],
     column_config={'risk_score': st.column_config.ProgressColumn('score', min_value=0, max_value=int(df.risk_score.max()), format='%d'),
