@@ -1,0 +1,7 @@
+.venv/
+/data/
+__pycache__/
+*.parquet
+!app/data/*.parquet
+.claude/
+*.bak
