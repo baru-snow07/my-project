@@ -3,7 +3,7 @@
 A small sales-intelligence tool that ranks companies by how urgently their internet-facing
 systems need security help, so a cybersecurity sales team knows who to call first and what to say.
 
-- **App:** https://baru-snow07-my-project-appapp-brf2ue.streamlit.app/
+- **App:** https://cyber-prospecting.streamlit.app/
 - **Pipeline:** `pipeline/ingest.py` (stream → Parquet) and `pipeline/build.py` (DuckDB → scored companies)
 - **Exploration notes:** [`explore/FINDINGS.md`](explore/FINDINGS.md)
 - **Evaluation:** [`eval/report.md`](eval/report.md)
