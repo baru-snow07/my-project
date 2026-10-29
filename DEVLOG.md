@@ -84,10 +84,32 @@ The app itself makes **no LLM calls**: scores, reasons and opening lines are det
 account and can't hallucinate. One task does benefit from judgment: telling hosting companies from end
 organisations. `pipeline/llm_classify.py` does that with structured output, and it is checked two ways:
 
-1. **Accuracy:** a 60-domain sample labelled by hand (`eval/human_labels.csv`), compared to the LLM's answers
+1. **Accuracy:** reference labels for a random sample, compared to the LLM's answers
    (`llm_classify.py score` → `eval/llm_report.md`, with every disagreement listed).
 2. **Cost:** exact token usage logged per run (`eval/llm_usage.json`). Dry-run estimate for the top 500: **$4.76 with
    Claude Opus 5.5** ($9.53 per 1,000 domains) or **$0.12 with Claude Haiku 5.5** ($0.24 per 1,000).
+
+## Round 8: running the classifier, and grading it honestly
+
+- **Run:** with no API key available, the top 500 domains were classified inside the Claude Code session,
+  with the same prompt, the same evidence and the same output schema as the script. Result: 257 end organisations,
+  176 hosting/ISP, 67 unsure. Cost: **65,363 tokens** (~131 per domain) on the Pro plan, no API spend.
+- **Reference labels:** labelling the sample with the same scan evidence would just measure self-agreement. So the
+  reference labels came from **independent evidence: each domain's live homepage** (title and description,
+  `explore/fetch_homepages.py`), which the classifier never saw. 41 of 60 homepages loaded, and 40 were labelled.
+  The 19 unreachable domains were left out rather than labelled from background knowledge. These reference labels
+  are AI-made, not human, and are kept separate (`eval/reference_labels.csv`) from `eval/human_labels.csv`,
+  which is still open for a human check.
+- **Result:** the classifier answered 88% of the time; where it answered, it agreed with the homepage label
+  **74%** of the time (26/35). Three of its nine misses are domains whose homepage was itself too vague to label;
+  excluding them gives ~81%.
+- **What the errors say:** the main failure is **hosting companies taken for end organisations** (5 of 18): a game-server
+  host, a cloud/DR provider, a telecom brand, a university network that is really an ISP. Server banners show *what a
+  company runs*, not *what it sells*. **Next step:** add the homepage title/description to the classifier's evidence;
+  it's one cheap HTTP request per domain and is exactly the signal the errors were missing.
+- **A mistake of mine during this round:** a test of the scoring step wrote fake labels into `eval/human_labels.csv`
+  and then crashed. It was restored from a backup immediately (verified identical to the committed file), and the
+  test was re-run against a temporary copy.
 
 ## What building it cost
 

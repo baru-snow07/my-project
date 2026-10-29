@@ -124,9 +124,9 @@ def classify(top, model, dry_run):
     print(json.dumps(usage, indent=1))
 
 
-def score():
+def score(labels=HUMAN):
     llm = pd.read_csv(OUT)
-    human = pd.read_csv(HUMAN, dtype={'human_label': str}).dropna(subset=['human_label'])
+    human = pd.read_csv(labels, dtype={'human_label': str}).dropna(subset=['human_label'])
     human = human.assign(human_label=human['human_label'].str.strip().str.lower())
     human = human[human['human_label'] != '']
     m = human.merge(llm, on='company')
@@ -138,7 +138,7 @@ def score():
     report = [
         '# LLM classifier: end organisation vs hosting / ISP\n',
         f"Model: `{usage.get('model', '?')}`, {usage.get('calls', '?')} domains classified.\n",
-        f'- Human-labelled sample: **{len(m)}** domains',
+        f'- Reference labels: `{os.path.basename(labels)}`, **{len(m)}** domains',
         f"- LLM answered (not \"unsure\") on **{len(confident)}** ({len(confident) / len(m):.0%})",
         f'- Accuracy where it answered: **{acc:.0%}**',
         f"- Cost: **${usage.get('cost_usd', 0):.2f}** total, **${usage.get('cost_per_1000_domains', 0):.2f} per 1,000 domains** "
@@ -162,7 +162,8 @@ if __name__ == '__main__':
     ap.add_argument('--top', type=int, default=500)
     ap.add_argument('--model', default='claude-opus-5-5', choices=list(PRICES))
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--labels', default=HUMAN, help='reference labels for score (default: eval/human_labels.csv)')
     a = ap.parse_args()
     if a.step == 'label-sheet': label_sheet(a.top)
     elif a.step == 'classify': classify(a.top, a.model, a.dry_run)
-    else: score()
+    else: score(a.labels)

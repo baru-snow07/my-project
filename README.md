@@ -122,8 +122,9 @@ a *negative* weight: 56 positives is too few to learn from. The hand weights sta
 labels accumulate. See [`eval/weights.md`](eval/weights.md).
 
 ### Known limitations and next steps
-- Hosting businesses still leak into the top list. `pipeline/llm_classify.py` is ready to classify
-  them with Claude and score it against a hand-labelled sample (see AI usage below).
+- Hosting businesses still leak into the top list. A Claude classifier flags them at 74% agreement with
+  homepage-based labels (see AI usage below). Adding homepage text to its evidence is the next improvement,
+  and its flag is not yet wired into the app's ranking.
 - One snapshot shows state, not change. Trigger events ("RDP newly exposed this week",
   "certificate just expired") would be stronger sales signals once files arrive monthly.
 - Sector is guessed from the domain name; enriching with firmographics (size, industry) would
@@ -175,7 +176,17 @@ collected. How we know it's right, and what it costs:
 | Blind human labels for 60 random domains | `llm_classify.py label-sheet` | `eval/human_labels.csv` |
 | Prompt + cost estimate, no API call | `llm_classify.py classify --dry-run` | Opus 5.5: ~$4.76 per 500 domains; Haiku 5.5: ~$0.12 |
 | Classify (resumable, logs exact tokens) | `llm_classify.py classify [--model ...]` | `eval/llm_labels.csv`, `eval/llm_usage.json` |
-| Accuracy vs humans, confusion matrix, every disagreement | `llm_classify.py score` | `eval/llm_report.md` |
+| Accuracy vs reference labels, confusion matrix, every disagreement | `llm_classify.py score [--labels ...]` | `eval/llm_report.md` |
+
+**Result on the top 500** (run inside Claude Code, as no API key was available; same prompt and schema):
+257 end organisations, 176 hosting/ISP, 67 unsure, for **65k tokens on the Pro plan, no API spend**.
+
+**Is it right?** Reference labels for 40 sampled domains came from **independent evidence, their live
+homepages**, which the classifier never saw. These labels are AI-made, so `eval/human_labels.csv` stays open
+for a human check. Where the classifier answered (88%), it agreed **74%** of the time, or ~81% excluding domains
+whose homepage was itself ambiguous. The dominant error is hosting companies read as end organisations: scan
+data shows what a company *runs*, not what it *sells*. The fix is to add the homepage title to the
+classifier's evidence. Full report: [`eval/llm_report.md`](eval/llm_report.md); details in DEVLOG round 8.
 
 ### Cost
 
