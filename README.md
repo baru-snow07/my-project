@@ -12,13 +12,7 @@ systems need security help, so a cybersecurity sales team knows who to call firs
 
 1. Filter by *why now* (breached, actively exploited CVE, exposed critical service...), sector, country and size.
 2. Pick an account and read the plain-English reasons, each with the points it contributed.
-3. Check the **evidence table**: the actual servers behind the score (port, software version, issues),
-   worst first. Every claim traces back to a scan record. IPs are masked (`128.32.x.x`) so the
-   public app is not a target list.
-4. Use the suggested opening line, which is built from the strongest reason. No LLM is needed, so it costs nothing and can't hallucinate.
-5. Export the filtered list as CSV for the CRM.
-
-The app's **How it works** tab walks through the data, traps, scoring weights and back-test results.
+3. Use the suggested opening line, which is built from the strongest reason. No LLM is needed, so it costs nothing and can't hallucinate.
 
 ## The data
 

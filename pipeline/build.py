@@ -5,7 +5,7 @@
 Writes app/data/companies.parquet (what the app reads) and prints a short summary.
 All weights live in WEIGHTS so the scoring can be explained, tuned and tested.
 """
-import argparse, json, os
+import argparse, os
 import duckdb
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -180,50 +180,6 @@ def build(sample):
     # Only domain-identified companies are actionable: an org-only entry is an ISP or cloud
     # customer we cannot name, so a salesperson has nobody to contact.
     con.execute(f"COPY (SELECT * FROM final WHERE key_type = 'domain' AND risk_score > 0 ORDER BY risk_score DESC) TO '{OUT.replace(chr(92), '/')}' (FORMAT parquet, COMPRESSION zstd)")
-
-    # Evidence: the individual servers behind each company's reasons, so every claim in the app
-    # traces back to a scan record. IPs are masked: a public page should not be a target list.
-    con.execute(f"""
-        COPY (
-            WITH e AS (
-                SELECT company,
-                    CASE WHEN contains(ip, ':') THEN split_part(ip, ':', 1) || ':' || split_part(ip, ':', 2) || ':…'
-                         ELSE split_part(ip, '.', 1) || '.' || split_part(ip, '.', 2) || '.x.x' END AS ip,
-                    port, nullif(trim(coalesce(product, '') || ' ' || coalesce(version, '')), '') AS software,
-                    list_filter([
-                        CASE WHEN compromised THEN 'compromised' END,
-                        CASE WHEN unauth_data THEN 'data open without password' END,
-                        CASE WHEN len(list_filter(kev_cves, lambda x: NOT list_contains({lst(common) if common else '[]::VARCHAR[]'}, x))) > 0
-                             THEN 'known-exploited CVE: ' || array_to_string(kev_cves[:2], ', ') END,
-                        CASE WHEN n_high_epss > 0 THEN n_high_epss || ' likely-exploited CVEs' END,
-                        CASE WHEN len(exposed) > 0 THEN 'exposed: ' || array_to_string(exposed, ', ') END,
-                        CASE WHEN eol THEN 'end-of-life software' END,
-                        CASE WHEN anon_ftp THEN 'anonymous FTP' END,
-                        CASE WHEN ntlm_leak THEN 'leaks internal names' END,
-                        CASE WHEN cert_expired THEN 'expired certificate' END,
-                        CASE WHEN legacy_tls THEN 'old TLS versions' END
-                    ], lambda x: x IS NOT NULL) AS issues,
-                    compromised::INT * 100 + unauth_data::INT * 60 + len(exposed) * 30
-                        + (len(list_filter(kev_cves, lambda x: NOT list_contains({lst(common) if common else '[]::VARCHAR[]'}, x))) > 0)::INT * 25
-                        + least(n_high_epss, 5) * 2 + eol::INT * 8 AS severity
-                FROM rows
-                WHERE key_type = 'domain' AND NOT edge
-                  AND company IN (SELECT company FROM final WHERE key_type = 'domain' AND risk_score >= 20)
-            )
-            SELECT company, rn AS rank, ip, port, software, issues FROM (
-                SELECT *, row_number() OVER (PARTITION BY company ORDER BY severity DESC, port) AS rn
-                FROM (SELECT DISTINCT ON (company, ip, port) * FROM e WHERE len(issues) > 0 ORDER BY company, ip, port, severity DESC))
-            WHERE rn <= 8 ORDER BY company, rn
-        ) TO '{os.path.join(os.path.dirname(OUT), 'evidence.parquet').replace(chr(92), '/')}' (FORMAT parquet, COMPRESSION zstd)""")
-
-    # Pipeline facts for the app's "How it works" tab.
-    stats = dict(zip(['rows', 'providers', 'infra_domains', 'domain_companies', 'scored'], con.execute("""
-        SELECT (SELECT count(*) FROM rows), (SELECT count(*) FROM providers), (SELECT count(DISTINCT company) FROM infra_domains),
-               count(*) FILTER (WHERE key_type = 'domain'), count(*) FILTER (WHERE key_type = 'domain' AND risk_score > 0)
-        FROM final""").fetchall()[0]))
-    stats.update(weights=WEIGHTS, common_kev=common)
-    with open(os.path.join(os.path.dirname(OUT), 'stats.json'), 'w') as f:
-        json.dump(stats, f, indent=1)
 
     print(con.sql("SELECT (SELECT count(*) FROM providers) providers, (SELECT count(*) FROM infra_domains) infra_domains, count(*) FILTER (WHERE key_type = 'domain') domain_companies, count(*) FILTER (WHERE key_type = 'domain' AND risk_score > 0) scored FROM final"))
     print(con.sql("SELECT tier, count(*) n FROM final WHERE key_type = 'domain' AND risk_score > 0 GROUP BY ALL ORDER BY 2 DESC"))
