@@ -56,7 +56,7 @@ def prompt_for(row):
             f"Network owner of most of its IPs: {row['network_org']}\n"
             f"Country: {row['country']}\n"
             f"Internet-facing IPs seen: {int(row['ips'])}\n"
-            f"A website title on its servers: {row['web_title'] or '(none)'}\n"
+            f"A website title on its servers: {row['web_title'] if isinstance(row['web_title'], str) else '(none)'}\n"
             f"Web technologies seen: {', '.join(list(row['tech'])[:10]) or '(none)'}\n"
             f"Server software seen: {', '.join(sw) or '(none)'}")
 
@@ -126,8 +126,9 @@ def classify(top, model, dry_run):
 
 def score():
     llm = pd.read_csv(OUT)
-    human = pd.read_csv(HUMAN).dropna(subset=['human_label'])
-    human = human[human['human_label'].str.strip() != '']
+    human = pd.read_csv(HUMAN, dtype={'human_label': str}).dropna(subset=['human_label'])
+    human = human.assign(human_label=human['human_label'].str.strip().str.lower())
+    human = human[human['human_label'] != '']
     m = human.merge(llm, on='company')
     if m.empty:
         sys.exit('No overlap yet: fill eval/human_labels.csv and run classify first.')
@@ -141,7 +142,9 @@ def score():
         f"- LLM answered (not \"unsure\") on **{len(confident)}** ({len(confident) / len(m):.0%})",
         f'- Accuracy where it answered: **{acc:.0%}**',
         f"- Cost: **${usage.get('cost_usd', 0):.2f}** total, **${usage.get('cost_per_1000_domains', 0):.2f} per 1,000 domains** "
-        f"({usage.get('input_tokens', 0):,} input + {usage.get('output_tokens', 0):,} output tokens)\n",
+        + (f"({usage['input_tokens']:,} input + {usage['output_tokens']:,} output tokens)" if 'input_tokens' in usage
+         else f"({usage.get('context_tokens_used', 0):,} tokens in a Claude Code session)"),
+        f"- Note: {usage['note']}\n" if usage.get('note') else '',
         '## Confusion (rows = human, columns = LLM)\n',
         pd.crosstab(m['human_label'], m['label']).to_markdown(), '\n',
         '## Disagreements\n',

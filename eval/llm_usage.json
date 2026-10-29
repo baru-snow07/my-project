@@ -1,0 +1,12 @@
+{
+ "model": "claude-opus-5-5 (via Claude Code session, not the API)",
+ "calls": 500,
+ "context_tokens_before": 431482,
+ "context_tokens_after": 496845,
+ "context_tokens_used": 65363,
+ "tokens_per_domain": 131,
+ "plan": "Claude Pro: 5-hour window 43% -> 46%, weekly allowance stayed at 7%",
+ "cost_usd": 0.0,
+ "cost_per_1000_domains": 0.0,
+ "note": "Covered by the Claude Pro subscription; no API spend. The unattended API path (llm_classify.py classify) is estimated at $9.53 per 1,000 domains on Opus 5.5 or $0.24 on Haiku 5.5."
+}
