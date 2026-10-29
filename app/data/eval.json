@@ -1,42 +1,42 @@
 {
- "auc": 0.701,
+ "auc": 0.803,
  "breached_hosts": 56,
  "hosts": 3350096,
  "top10k_lift": 6.0,
  "lift": [
   {
    "signal": "eol",
-   "hosts": 162144,
+   "hosts": 162156,
    "lift": 15.13
   },
   {
    "signal": "high_epss",
-   "hosts": 295946,
+   "hosts": 295947,
    "lift": 2.43
   },
   {
    "signal": "kev",
-   "hosts": 189871,
+   "hosts": 189880,
    "lift": 1.89
   },
   {
    "signal": "cert_expired",
-   "hosts": 35665,
+   "hosts": 35677,
    "lift": 1.68
   },
   {
    "signal": "self_signed",
-   "hosts": 84994,
+   "hosts": 84983,
    "lift": 0.7
   },
   {
    "signal": "remote",
-   "hosts": 26480,
+   "hosts": 26364,
    "lift": 0.0
   },
   {
    "signal": "legacy_tls",
-   "hosts": 57120,
+   "hosts": 57112,
    "lift": 0.0
   },
   {
@@ -46,17 +46,17 @@
   },
   {
    "signal": "ntlm",
-   "hosts": 20326,
+   "hosts": 20328,
    "lift": 0.0
   },
   {
    "signal": "waf",
-   "hosts": 77793,
+   "hosts": 77782,
    "lift": 0.0
   },
   {
    "signal": "security_txt",
-   "hosts": 4247,
+   "hosts": 4258,
    "lift": 0.0
   }
  ]

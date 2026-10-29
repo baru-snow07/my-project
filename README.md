@@ -6,7 +6,8 @@ systems need security help, so a cybersecurity sales team knows who to call firs
 - **App:** https://cyber-prospecting.streamlit.app/
 - **Pipeline:** `pipeline/ingest.py` (stream → Parquet) and `pipeline/build.py` (DuckDB → scored companies)
 - **Exploration notes:** [`explore/FINDINGS.md`](explore/FINDINGS.md)
-- **Evaluation:** [`eval/report.md`](eval/report.md)
+- **Evaluation:** [`eval/report.md`](eval/report.md), [`eval/weights.md`](eval/weights.md)
+- **How it was built with AI:** [`DEVLOG.md`](DEVLOG.md)
 
 ## How a salesperson uses it
 
@@ -95,7 +96,9 @@ tagged `compromised` (e.g. a database wiped with a ransom note) or a database op
 I scored every server with the same weights **but without** those breach signals, and checked
 whether the warning signs alone rank the breached servers higher.
 
-- AUC **0.70** (0.5 = random): the warning signs do separate breached servers from the rest.
+- AUC **0.80** (0.5 = random): the warning signs do separate breached servers from the rest.
+  (An earlier version reported 0.70 because of a tie-ranking bug in the SQL; it was caught by
+  cross-checking against scikit-learn. See [`DEVLOG.md`](DEVLOG.md), round 5.)
 - Breached servers are **6×** over-represented in the top 10,000 scored servers.
 - Strongest single predictor: **end-of-life software (15× lift)**, then high-EPSS CVEs (2.4×)
   and KEV CVEs (1.9×). Self-signed certs carried no signal (0.7×).
@@ -113,10 +116,14 @@ Hewlett Packard Enterprise, the Jordanian government. The rest are mostly hostin
 themselves, but their risk is partly their customers'. Before rules: the top 25 were almost
 entirely CDNs, ISPs and clouds.
 
+**4. Hand-set vs learned weights.** A logistic regression fitted to the breach labels with 5-fold
+cross-validation scored **0.785** vs **0.803** for the hand weights, and gave Remote Desktop exposure
+a *negative* weight: 56 positives is too few to learn from. The hand weights stay, to be re-fitted as
+labels accumulate. See [`eval/weights.md`](eval/weights.md).
+
 ### Known limitations and next steps
-- Hosting businesses still leak into the top list. With more files, label a few hundred
-  domains and train a small classifier on the features already computed (ownership, org spread,
-  title diversity, control-panel share).
+- Hosting businesses still leak into the top list. `pipeline/llm_classify.py` is ready to classify
+  them with Claude and score it against a hand-labelled sample (see AI usage below).
 - One snapshot shows state, not change. Trigger events ("RDP newly exposed this week",
   "certificate just expired") would be stronger sales signals once files arrive monthly.
 - Sector is guessed from the domain name; enriching with firmographics (size, industry) would
@@ -129,6 +136,7 @@ pip install -r requirements-pipeline.txt
 python pipeline/ingest.py path/to/*.json.zst      # map: one Parquet per input file, skips done files
 python pipeline/build.py                           # reduce + score -> app/data/companies.parquet
 python pipeline/evaluate.py                        # -> eval/report.md
+python pipeline/learn_weights.py                   # -> eval/weights.md (hand vs learned weights)
 streamlit run app/app.py
 ```
 
@@ -146,9 +154,33 @@ writing the pipeline, and iterating on the rules. How I kept it honest:
   organisations against known infrastructure before it went in.
 - **A measurable test instead of trust.** `evaluate.py` back-tests the score against servers
   that were actually breached, so the weights are judged by data, not by how plausible they sound.
+- **Cross-checking the AI's own numbers.** The evaluation's first AUC (0.70) disagreed with
+  scikit-learn (0.80); the cause was a tie-ranking bug, now fixed. A guessed cause for the hosted-app
+  crash (memory) was measured and ruled out before the log revealed the real bug.
 - **No LLM at runtime.** Scoring, reasons and the opening line are deterministic SQL/Python.
   The app makes zero API calls: no per-account cost, nothing to hallucinate, and every claim
   traces back to a scan field.
 
-**Cost:** development only, on a Claude subscription (Claude Code), with no API spend.
-Running the pipeline costs only compute: ~10 min of an 8-core laptop per 17.6 GB file.
+The full round-by-round record, with what was wrong each time and how it was measured, is in
+**[`DEVLOG.md`](DEVLOG.md)**.
+
+### Where an LLM earns its place: hosting vs real organisation
+
+`pipeline/llm_classify.py` asks Claude (structured output, one JSON verdict per domain) whether each
+top-ranked domain is an end organisation or a hosting/ISP business, from the evidence already
+collected. How we know it's right, and what it costs:
+
+| Step | Command | Output |
+|---|---|---|
+| Blind human labels for 60 random domains | `llm_classify.py label-sheet` | `eval/human_labels.csv` |
+| Prompt + cost estimate, no API call | `llm_classify.py classify --dry-run` | Opus 5.5: ~$4.76 per 500 domains; Haiku 5.5: ~$0.12 |
+| Classify (resumable, logs exact tokens) | `llm_classify.py classify [--model ...]` | `eval/llm_labels.csv`, `eval/llm_usage.json` |
+| Accuracy vs humans, confusion matrix, every disagreement | `llm_classify.py score` | `eval/llm_report.md` |
+
+### Cost
+
+- **Development:** Claude Code on a Claude Pro subscription. The whole project used about 6% of one
+  week's allowance (main conversation ~350k tokens). No API spend.
+- **Pipeline:** compute only, ~10 min of an 8-core laptop per 17.6 GB file; scoring ~12 s.
+- **LLM classifier:** measured per run in `eval/llm_usage.json` (estimates above).
+- **Hosting:** Streamlit Community Cloud, free.

@@ -35,7 +35,9 @@ con.execute(f"ALTER TABLE hosts ADD COLUMN score INT; UPDATE hosts SET score = {
 
 # AUC via the rank-sum (Mann-Whitney) formula, computed in SQL.
 auc, n_pos, n_neg = con.execute("""
-    WITH r AS (SELECT breached, rank() OVER (ORDER BY score) AS rk FROM hosts)
+    -- Tied scores must share their average rank; plain rank() gives ties the lowest rank and
+    -- understated the AUC (0.70 vs 0.80, cross-checked with scikit-learn in learn_weights.py).
+    WITH r AS (SELECT breached, rank() OVER (ORDER BY score) + (count(*) OVER (PARTITION BY score) - 1) / 2.0 AS rk FROM hosts)
     SELECT (sum(rk) FILTER (WHERE breached) - count(*) FILTER (WHERE breached) * (count(*) FILTER (WHERE breached) + 1) / 2.0)
            / (count(*) FILTER (WHERE breached) * count(*) FILTER (WHERE NOT breached)),
            count(*) FILTER (WHERE breached), count(*) FILTER (WHERE NOT breached) FROM r""").fetchone()
