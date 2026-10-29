@@ -5,7 +5,7 @@ rit.edu,end_organisation,high,Rochester Institute of Technology network
 mit.edu,end_organisation,high,MIT network
 keymachine.de,hosting_or_isp,high,"Keyweb AG hosting network, default Plesk pages"
 eztech.vn,hosting_or_isp,medium,Vietnamese provider network with suspended-website placeholder pages
-ritesim.com,unsure,low,Own-named network but no evidence of what the business is
+ritesim.com,hosting_or_isp,medium,Homepage: multi-network IoT SIM provider (connectivity provider)
 nazwa.pl,hosting_or_isp,high,"nazwa.pl web hosting servers, ""domain hosted on"" placeholder"
 keio.ac.jp,end_organisation,high,Keio University network
 uoc.gr,end_organisation,high,University of Crete network
@@ -43,7 +43,7 @@ unc.edu,end_organisation,high,University of North Carolina sites
 ho.ua,hosting_or_isp,high,Ukrainian hosting with FASTPANEL
 csic.es,end_organisation,high,Spanish National Research Council network
 dtp.net.id,hosting_or_isp,medium,Indonesian ISP
-common.com,unsure,low,"Telecom-hosted servers, business unclear"
+common.com,hosting_or_isp,medium,Homepage: domain for sale through a broker (parked)
 web-vision.io,hosting_or_isp,low,Default web server pages on WIIT hosting
 nipne.ro,end_organisation,high,Romanian physics research institute
 prefeitura.sp.gov.br,end_organisation,high,Sao Paulo city government
@@ -62,10 +62,10 @@ upaep.mx,end_organisation,high,UPAEP university
 watbw.com,unsure,low,No usable evidence
 knowledge-pillars.com,end_organisation,medium,Company website on AWS
 go.th,end_organisation,medium,Thai government department
-postmet.com,unsure,low,Default page only
+postmet.com,end_organisation,low,Homepage: PostMet Corp company
 poznan.pl,end_organisation,medium,Poznan supercomputing and research institute
 dls.net,hosting_or_isp,high,DLS Internet Services ISP and hosted PBX
-taf.ind.br,end_organisation,low,Brazilian company app on telecom network
+taf.ind.br,end_organisation,high,Homepage: TAF plastics manufacturer
 shizuoka.ac.jp,end_organisation,high,Shizuoka University
 istitutotumori.mi.it,end_organisation,high,Milan national cancer institute hospital
 tu-darmstadt.de,end_organisation,high,TU Darmstadt network
@@ -73,7 +73,7 @@ ntua.gr,end_organisation,high,National Technical University of Athens
 uwaterloo.ca,end_organisation,high,University of Waterloo
 your-printq.com,end_organisation,medium,Print business service
 uch.edu.tw,end_organisation,high,Taiwanese university
-strike.bz,unsure,low,"Remote-support software only, owner unclear"
+strike.bz,hosting_or_isp,high,Homepage: anonymous VPS hosting
 bbc.co.uk,end_organisation,high,British Broadcasting Corporation
 cafe24.com,hosting_or_isp,high,Korean web hosting platform
 klfree.cz,hosting_or_isp,high,Community ISP
@@ -87,7 +87,7 @@ mpg.de,end_organisation,high,Max Planck Society
 tino.org,hosting_or_isp,medium,Vietnamese hosting with Proxmox fleet
 securedata.net,hosting_or_isp,medium,Hosting customer sites (insurance agency site)
 shu.edu.tw,end_organisation,high,Taiwanese university
-computerline.net,hosting_or_isp,medium,IT provider with inactive placeholder sites
+computerline.net,hosting_or_isp,high,Homepage: connectivity and infrastructure provider
 unam.mx,end_organisation,high,National Autonomous University of Mexico
 poliba.it,end_organisation,high,Politecnico di Bari
 prodns.mx,hosting_or_isp,high,HostGator DNS and hosting
@@ -123,7 +123,7 @@ unblog.fr,hosting_or_isp,high,Free blog hosting platform on OVH (a school teache
 ethz.ch,end_organisation,high,ETH Zurich network
 pdcsrvr.com,end_organisation,medium,BCG Attorney Search running its own job sites
 armada.it,hosting_or_isp,high,"Italian hosting services network with Plesk, customer sites"
-dafater.biz,unsure,low,DigitalOcean servers with no content
+dafater.biz,end_organisation,medium,Homepage: cloud ERP software company
 ipeva.net,hosting_or_isp,medium,Small French provider with default pages
 mta.hu,end_organisation,high,Hungarian Academy of Sciences research centres
 unm.edu,end_organisation,high,University of New Mexico
@@ -134,10 +134,10 @@ cam.ac.uk,end_organisation,high,University of Cambridge
 ncrvoyix.com,end_organisation,high,NCR Voyix company services on Google Cloud
 blueweb.co.kr,hosting_or_isp,medium,Korean web hosting brand
 platon.sk,hosting_or_isp,high,Platon webhosting default domain pages
-itall.co.jp,end_organisation,low,Small company app on Sakura hosting
+itall.co.jp,end_organisation,medium,"Homepage: IT company (cloud phone, PR, e-commerce)"
 kribrum.ru,end_organisation,medium,Kribrum company own network
 turningtechnologies.com,end_organisation,high,Turning Technologies company app on AWS
-default.com,hosting_or_isp,high,"Placeholder ""site created"" pages on Oracle Cloud, not a real organisation"
+default.com,end_organisation,high,Homepage: Default go-to-market SaaS company
 fgu.edu.tw,end_organisation,high,Fo Guang University
 ufl.edu,end_organisation,high,University of Florida
 mq.edu.au,end_organisation,high,Macquarie University
@@ -154,7 +154,7 @@ gulag.org.uk,unsure,low,Default pages only
 colba.net,hosting_or_isp,high,Canadian ISP
 iccs.gr,end_organisation,high,NTUA research institute
 netline.net.uk,hosting_or_isp,medium,UK ISP network
-noraina.net,unsure,low,"Small company network, default pages only"
+noraina.net,hosting_or_isp,high,Homepage: cloud infrastructure and disaster recovery provider
 arrl.org,end_organisation,high,American Radio Relay League
 sdtv.net.tw,hosting_or_isp,high,Taiwanese cable TV ISP
 thousand-twentyfour.com,unsure,low,Default page on Thai hosting
@@ -167,7 +167,7 @@ upatras.gr,end_organisation,high,University of Patras
 teledata.mz,hosting_or_isp,high,Mozambique ISP hosting a ministry site
 uni-muenchen.de,end_organisation,high,LMU Munich
 greenspot.fi,hosting_or_isp,medium,Finnish provider mailing-list hosting
-cniteam.com,hosting_or_isp,medium,Com Net ISP forum
+cniteam.com,hosting_or_isp,high,Homepage: telecom and fibre network services
 pmabs.org,unsure,low,Default pages on LeaseWeb
 site.default,hosting_or_isp,high,"Placeholder default-site name, not a real organisation"
 abtk.hu,end_organisation,high,Hungarian research centre for humanities
@@ -175,7 +175,7 @@ nexthop.no,hosting_or_isp,high,Norwegian ISP
 vt.edu,end_organisation,high,Virginia Tech
 thu.edu.tw,end_organisation,high,Tunghai University
 fsu.edu,end_organisation,high,Florida State University
-tips.com.br,end_organisation,medium,Brazilian company backup service
+tips.com.br,hosting_or_isp,medium,Homepage: hosting services
 utexas.edu,end_organisation,high,University of Texas at Austin
 planisys.net,hosting_or_isp,medium,Hosting/email provider
 accern.com,hosting_or_isp,medium,Sites on InMotion Hosting default pages
@@ -191,7 +191,7 @@ fai.ag,end_organisation,high,FAI Aviation Group company
 nashnet.nu,hosting_or_isp,medium,Swedish community network hosting a village association
 awardic.net,unsure,low,No usable evidence
 ulisboa.pt,end_organisation,high,University of Lisbon
-lublin.pl,hosting_or_isp,medium,City-name domain used by an advertising agency's hosting
+lublin.pl,unsure,low,Homepage: regional portal; network belongs to an ad agency
 vdsglobal.com,hosting_or_isp,high,Turkish VDS hosting company
 livas.lv,end_organisation,medium,Latvian company core network
 wkki.pl,hosting_or_isp,medium,Polish ISP group
@@ -218,12 +218,12 @@ sandals.com,end_organisation,high,Sandals Resorts company
 scouts.com.au,end_organisation,high,Scouts Australia
 gateit.ro,hosting_or_isp,high,Romanian telecom ISP
 kent.edu.au,end_organisation,high,Kent Institute Australia
-kood.asia,unsure,low,"Defaced single site, owner unclear"
+kood.asia,end_organisation,medium,Homepage: Smartkood brand protection company
 upjp2.edu.pl,end_organisation,high,Pontifical University of John Paul II
 mailii.org,unsure,low,"Mail gateway, owner unclear"
 fcwan.cz,unsure,low,Single gateway on Vodafone
 dlink.com.tw,hosting_or_isp,medium,D-Link device default domain on customer routers
-a-mode.jp,unsure,low,No usable evidence
+a-mode.jp,hosting_or_isp,high,Homepage: dedicated and rental server provider
 sdsc.edu,end_organisation,high,San Diego Supercomputer Center
 supersitegroup.com,unsure,low,No usable evidence
 ataraxie.fr,hosting_or_isp,medium,French hosting company
@@ -240,9 +240,9 @@ tuiasi.ro,end_organisation,high,Gheorghe Asachi Technical University
 aalto.fi,end_organisation,high,Aalto University
 unl.pt,end_organisation,high,NOVA University Lisbon
 in2p3.fr,end_organisation,high,CNRS nuclear physics institute
-lodz.pl,hosting_or_isp,medium,City-name domain used by a satellite TV association network
+lodz.pl,unsure,low,Homepage: city portal; network belongs to a satellite TV association
 telushealth.com,end_organisation,high,TELUS Health company services
-sos.org,unsure,low,Default pages only
+sos.org,end_organisation,high,Homepage: Science of Spirituality non-profit
 unimo.it,end_organisation,high,University of Modena and Reggio Emilia
 lshtm.ac.uk,end_organisation,high,London School of Hygiene and Tropical Medicine
 mpcnet.de,hosting_or_isp,high,Probe Networks hosting
@@ -277,7 +277,7 @@ mydevil.net,hosting_or_isp,high,Polish shared hosting provider
 columbia.edu,end_organisation,high,Columbia University
 hspheredns.com,hosting_or_isp,high,H-Sphere hosting control panel DNS
 starnet.net.id,hosting_or_isp,medium,Indonesian ISP
-oilgas.center,unsure,low,Single status page
+oilgas.center,end_organisation,medium,Homepage: ChampionX oilfield technology company
 ubuntu.com,unsure,low,"Mirror servers on a hosting network, not Canonical's own"
 itsidc.com,hosting_or_isp,high,Hong Kong IDC hosting unrelated sites
 letaido.app,unsure,low,No usable evidence
@@ -290,13 +290,13 @@ gleeze.com,hosting_or_isp,high,Free dynamic DNS domain
 openx.com.br,hosting_or_isp,medium,Brazilian IT/network provider
 forth.gr,end_organisation,high,Foundation for Research and Technology Hellas
 galletatoxica.com,unsure,low,No usable evidence
-guangyv.com,unsure,low,No usable evidence
+guangyv.com,end_organisation,low,Homepage: Guangzhou entertainment information technology company
 ows.ch,unsure,low,No usable evidence
 drexel.edu,end_organisation,high,Drexel University
 sixorbit.com,end_organisation,low,Software company servers on DigitalOcean
 worldbyte.net,hosting_or_isp,medium,Placeholder hosting site
 truckmovers.com,end_organisation,high,TruckMovers company
-teambox.fr,end_organisation,medium,French software company
+teambox.fr,hosting_or_isp,medium,Homepage: business telephony provider
 iiserb.ac.in,end_organisation,high,IISER Bhopal
 crabdance.com,hosting_or_isp,high,FreeDNS shared dynamic domain
 sju.edu.tw,end_organisation,high,St. John's University Taiwan
@@ -305,7 +305,7 @@ uni-bonn.de,end_organisation,high,University of Bonn
 salessling.com,end_organisation,medium,SalesSling software company
 uconn.edu,end_organisation,high,University of Connecticut
 shlehe.cn,unsure,low,No usable evidence
-joolan.com,end_organisation,low,Company analytics server on Scaleway
+joolan.com,end_organisation,medium,Homepage: smart retail software company
 care.lv,end_organisation,medium,Latvian care company client portal
 intlgame.com,end_organisation,medium,Tencent international games logging tool
 uh.edu,end_organisation,high,University of Houston
@@ -314,24 +314,24 @@ thameswater.co.uk,end_organisation,high,Thames Water utility
 sancsoft.net,hosting_or_isp,medium,Developer hosting client sites
 clevelandfloorcovering.com,end_organisation,medium,Flooring company site
 unc.edu.ar,end_organisation,high,National University of Cordoba
-dnsnetpluscliente.com,hosting_or_isp,medium,ISP customer DNS domain
+dnsnetpluscliente.com,unsure,low,Homepage shows an unrelated shop
 awsmpsa.com,unsure,low,Placeholder on AWS
 e-vtc.net,unsure,low,"Placeholder ""empresa"" page on OVH"
-leyudm.com,unsure,low,No usable evidence
+leyudm.com,end_organisation,low,Homepage: Guangzhou systems technology company
 anonine.net,hosting_or_isp,medium,VPN service provider
 020bz.com,unsure,low,No usable evidence
 managedmethodsdev.com,end_organisation,medium,ManagedMethods company dev environment
 koramgame.com,end_organisation,low,Games company servers
 medisy.id,end_organisation,medium,Indonesian medical software company
 vnpthis.vn,end_organisation,low,VNPT healthcare IT subsidiary
-mobismarter.com,unsure,low,No usable evidence
-rierra-ads.com,unsure,low,Ad servers on LeaseWeb
+mobismarter.com,end_organisation,medium,Homepage: programmatic ads platform company
+rierra-ads.com,end_organisation,low,Homepage: ad-tech company
 hkfree.org,hosting_or_isp,high,Community ISP infrastructure
 infn.it,end_organisation,high,Italian National Institute for Nuclear Physics
-local.com,hosting_or_isp,low,Placeholder name on Psychz hosting
+local.com,end_organisation,medium,Homepage: Local.com reviews and lists site
 crosig.hr,end_organisation,high,Croatia Osiguranje insurance
 ipnet.ua,hosting_or_isp,high,Ukrainian ISP
-imatel.es,end_organisation,medium,Spanish installations company
+imatel.es,hosting_or_isp,high,Homepage: global telecom operator
 twitcasting.tv,end_organisation,high,TwitCasting streaming company
 reseaux.info,hosting_or_isp,medium,Hosting serving unrelated sites
 ramrock.info,unsure,low,No usable evidence
@@ -371,7 +371,7 @@ seconos.com,end_organisation,medium,Seconos software company
 egov.bg,end_organisation,high,Bulgarian e-government
 visapro.cc,end_organisation,low,VisaPro admin app on AWS
 grandstream.com,end_organisation,medium,Grandstream company servers
-lidos.cz,end_organisation,medium,Czech company own network (avionics)
+lidos.cz,hosting_or_isp,high,Homepage: telecom and data services provider
 byu.edu,end_organisation,high,Brigham Young University
 inaf.it,end_organisation,high,Italian National Institute for Astrophysics
 optyma.com,hosting_or_isp,medium,Spanish web presence provider
@@ -380,8 +380,8 @@ vertv.com.br,hosting_or_isp,high,Brazilian cable ISP
 dic.at,hosting_or_isp,medium,Austrian online services provider mail autoconfig
 wzu.edu.tw,end_organisation,high,Wenzao Ursuline University
 rto.de,end_organisation,medium,RTO media agency company
-techweavers.net,hosting_or_isp,low,Small provider with a phpinfo page
-inim.biz,unsure,low,Single device interface
+techweavers.net,hosting_or_isp,medium,Homepage: website development and hosting company since 1998
+inim.biz,hosting_or_isp,low,Homepage: alarm maker; records are customer devices on its device-access domain
 zelenyweb.cz,hosting_or_isp,high,Czech web hosting error page
 manquehue.net,hosting_or_isp,high,Telmex Chile ISP customer device
 CMU.EDU,end_organisation,high,Carnegie Mellon University
@@ -408,8 +408,8 @@ dandomain.dk,hosting_or_isp,high,Danish webshop and web hosting company
 linkeo.com,hosting_or_isp,medium,French web agency hosting client sites
 bibnat.ro,end_organisation,high,National Library of Romania
 canonical.com,end_organisation,high,Canonical company image servers
-zetosa.com.pl,end_organisation,medium,ZETO IT services company
-atni.com,end_organisation,high,ATN International company
+zetosa.com.pl,hosting_or_isp,medium,Homepage: internet and IT services provider
+atni.com,hosting_or_isp,medium,Homepage: communications infrastructure and telecom operator
 istplanbar.org,unsure,low,Default pages on Hetzner
 meetip.net,hosting_or_isp,high,Aire Networks hosted telephony
 tvcultura.com.br,end_organisation,medium,TV Cultura / Univesp public broadcaster
@@ -422,7 +422,7 @@ dkewat.com.np,unsure,low,Single server directory listing
 gantep.edu.tr,end_organisation,high,Gaziantep University
 nottingham.ac.uk,end_organisation,high,University of Nottingham
 canary@test.com,hosting_or_isp,low,Not a real domain: test placeholder
-physgun.com,end_organisation,low,Small game-server company
+physgun.com,hosting_or_isp,high,Homepage: game server hosting
 abilixsoft.eu,hosting_or_isp,high,Bulgarian hosting with domain welcome pages
 portea.com,end_organisation,high,Portea home healthcare company
 winning.com.au,end_organisation,medium,Winning Group retail company
@@ -434,10 +434,10 @@ alojo.es,hosting_or_isp,high,Spanish hosting company serving a town council site
 naughtycasual.com,unsure,low,Placeholder page
 jacsa.net,hosting_or_isp,high,Hungarian ISP
 brown.edu,end_organisation,high,Brown University
-topoffernation.com,unsure,low,No usable evidence
+topoffernation.com,end_organisation,low,Homepage: roofing lead-generation business
 ox.ac.uk,end_organisation,high,University of Oxford
 homeupgradecenter.org,unsure,low,No usable evidence
-sbin.bj,end_organisation,medium,Benin national digital infrastructure company
+sbin.bj,hosting_or_isp,medium,Homepage: Celtiis telecom brand
 bizland.com,hosting_or_isp,high,Newfold Digital web hosting serving small business sites
 moph.go.th,end_organisation,high,Thai Ministry of Public Health
 irdeto.com,end_organisation,medium,"Irdeto company, though hosted pages look shared"
@@ -449,40 +449,40 @@ kit.edu,end_organisation,high,Karlsruhe Institute of Technology
 logograph.com,hosting_or_isp,medium,Webmail on a small Unix hosting provider
 metrooptic.com,end_organisation,medium,Metro Optic company
 usask.ca,end_organisation,high,University of Saskatchewan
-prezzibenzina.it,unsure,low,Hosts serving an unrelated site
+prezzibenzina.it,end_organisation,low,Homepage: fuel price comparison site
 vinnitsa.com,hosting_or_isp,medium,Vinteleport ISP payment page
 unonet.it,hosting_or_isp,medium,Italian IT services provider
 aivomatrix.com,unsure,low,Directory listing only
 jundiai.sp.gov.br,end_organisation,high,Jundiai city government
 famoco.com,end_organisation,high,Famoco company platform
 3phasetech.com,end_organisation,medium,Network installation company site on shared hosting
-dunarri.com,hosting_or_isp,low,Domain serving an unrelated powersports site
+dunarri.com,end_organisation,medium,Homepage: Dunarri vehicle accessories company
 netw.fr,hosting_or_isp,high,Networth Telecom ISP
 adelaide.edu.au,end_organisation,high,University of Adelaide
-sargasso.net,end_organisation,medium,Pricing portal company
+sargasso.net,hosting_or_isp,medium,Homepage: Sargasso Networks network services
 wasgr.com,end_organisation,medium,Spanish Fork City utility portal
 furanet.com,hosting_or_isp,high,Spanish hosting company serving many sites
 ringcentral.com,end_organisation,high,RingCentral company
 soleus.nu,hosting_or_isp,medium,Coloclue members' network hosting
 visualconscience.com,end_organisation,low,Small company site
-otto.srl,unsure,low,Hosts an unrelated congress site
+otto.srl,hosting_or_isp,low,Homepage: design and development agency
 all2all.org,hosting_or_isp,high,Community independent network
-viva.com,unsure,low,Domain serving an unrelated travel site
+viva.com,end_organisation,medium,Homepage: Viva tech bank
 apa.org,end_organisation,high,American Psychological Association
 vanilla.net.mt,hosting_or_isp,high,Maltese telecom
-compuland.com.br,end_organisation,low,Small IT company
-travel-b2b.com,end_organisation,medium,Travel B2B company
+compuland.com.br,hosting_or_isp,high,Homepage: internet provider and hosting since 1995
+travel-b2b.com,hosting_or_isp,medium,Homepage: web studio running booking sites for travel agents
 uni-stuttgart.de,end_organisation,high,University of Stuttgart
 webplace.lv,hosting_or_isp,high,Latvian hosting with domain welcome pages
 imatech.com.au,end_organisation,medium,Imatech company login
-myant.org,unsure,low,No usable evidence
+myant.org,end_organisation,medium,Homepage: CRM software for contractors
 valuersoffice.au,end_organisation,low,Valuers office control panel
 atlasnet.net.br,hosting_or_isp,high,Brazilian ISP
 pcextreme.nl,hosting_or_isp,high,Dutch hosting provider
 panoch.net,unsure,low,Single monitoring server
 polly.com.ua,end_organisation,medium,Gas convector manufacturer site
 rekeyedboreens.com,unsure,low,Error page only
-l2n.it,unsure,low,No usable evidence
+l2n.it,hosting_or_isp,low,Homepage: network solutions provider
 tetaneutral.net,hosting_or_isp,high,Non-profit ISP association
 engi.pl,hosting_or_isp,medium,Polish provider default pages
 gac-international.com,unsure,low,No usable evidence

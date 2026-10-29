@@ -8,5 +8,11 @@
  "plan": "Claude Pro: 5-hour window 43% -> 46%, weekly allowance stayed at 7%",
  "cost_usd": 0.0,
  "cost_per_1000_domains": 0.0,
- "note": "Covered by the Claude Pro subscription; no API spend. The unattended API path (llm_classify.py classify) is estimated at $9.53 per 1,000 domains on Opus 5.5 or $0.24 on Haiku 5.5."
+ "note": "Covered by the Claude Pro subscription; no API spend. The unattended API path (llm_classify.py classify) is estimated at $9.53 per 1,000 domains on Opus 5.5 or $0.24 on Haiku 5.5.",
+ "v2": {
+  "homepages_fetched": 500,
+  "homepages_reachable": 368,
+  "verdicts_changed": 44,
+  "note": "v2 reviewed every v1 verdict with homepage title/description added, in the same Claude Code session"
+ }
 }

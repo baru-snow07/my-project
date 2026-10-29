@@ -185,13 +185,19 @@ collected. How we know it's right, and what it costs:
 homepages**, which the classifier never saw. These labels are AI-made, so `eval/human_labels.csv` stays open
 for a human check. Where the classifier answered (88%), it agreed **74%** of the time, or ~81% excluding domains
 whose homepage was itself ambiguous. The dominant error is hosting companies read as end organisations: scan
-data shows what a company *runs*, not what it *sells*. The fix is to add the homepage title to the
-classifier's evidence. Full report: [`eval/llm_report.md`](eval/llm_report.md); details in DEVLOG round 8.
+data shows what a company *runs*, not what it *sells*. Full report: [`eval/llm_report.md`](eval/llm_report.md); details in DEVLOG round 8.
+
+**Did adding the homepage help?** Re-scoring on homepage-based labels would be grading with the answer key, so a
+**held-out** set of 50 new domains was labelled from their About/Contact pages and committed *before* the
+homepage-aware v2 existed. On it, v2 answers more often (98% vs 94%; "unsure" fell from 67 to 49 across all 500) but
+accuracy didn't measurably change (90% vs 92% where both decided, a one-answer difference). The sample is too small
+to detect an effect of this size; that, too, is reported as found. See [`eval/llm_v1_vs_v2.md`](eval/llm_v1_vs_v2.md)
+and DEVLOG round 9.
 
 ### Cost
 
-- **Development:** Claude Code on a Claude Pro subscription. The whole project used about 6% of one
-  week's allowance (main conversation ~350k tokens). No API spend.
+- **Development:** Claude Code on a Claude Pro subscription. The whole project used about 8% of one
+  week's allowance (main conversation ~580k tokens, incl. ~150k for the two classifier rounds). No API spend.
 - **Pipeline:** compute only, ~10 min of an 8-core laptop per 17.6 GB file; scoring ~12 s.
 - **LLM classifier:** measured per run in `eval/llm_usage.json` (estimates above).
 - **Hosting:** Streamlit Community Cloud, free.

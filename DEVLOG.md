@@ -111,6 +111,30 @@ organisations. `pipeline/llm_classify.py` does that with structured output, and 
   and then crashed. It was restored from a backup immediately (verified identical to the committed file), and the
   test was re-run against a temporary copy.
 
+## Round 9: does adding the homepage help? (held-out test)
+
+- **The trap avoided:** the round-8 reference labels came from homepages, so feeding homepages to the classifier and
+  re-scoring on them would be grading with the answer key. A new, **held-out** test was built instead.
+- **Held-out labels:** 50 new random domains (none from the first sample), labelled only from their
+  **About/Contact/Legal pages** (`explore/fetch_about.py`, `eval/heldout_labels.csv`). They were **committed before
+  v2 existed**, so the git history shows they couldn't be tuned to it.
+- **v2:** every v1 verdict reviewed with the homepage title/description added (368 of 500 homepages loaded); 44 of
+  500 verdicts changed (`eval/llm_labels_v2.csv`).
+- **Result** (`pipeline/compare_classifiers.py` → `eval/llm_v1_vs_v2.md`):
+
+  | | v1 scan only | v2 scan + homepage |
+  |---|---|---|
+  | answered (not unsure) | 94% | 98% |
+  | accuracy where both decided | 92% (37/40) | 90% (37/41) |
+  | hosting caught | 9/11 | 9/11 |
+
+- **Reading it honestly:** the homepage **raises coverage** (unsure fell from 67 to 49 across all 500) but **did not
+  measurably change accuracy**. Only 4 of the 44 changes landed in the held-out sample, one of them genuinely
+  ambiguous (`teambox.fr` sells telephony to medical practices). v1 scored 74% on round 8's sample and 92% here: with
+  samples this small the estimate swings by more than the effect being measured. A real answer needs a few hundred
+  held-out labels. v2 is kept as the current labels for its coverage, not for a claimed accuracy gain.
+- **Cost of the round:** ~85k tokens in the Claude Code session (context 496,845 → 582,275), weekly Pro usage 7% → 8%.
+
 ## What building it cost
 
 - **Claude Code:** Claude Pro subscription. The whole project used about 6% of one week's allowance; the main
