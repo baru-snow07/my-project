@@ -9,7 +9,7 @@ import streamlit as st
 HERE = os.path.join(os.path.dirname(__file__), 'data')
 DATA = os.path.join(HERE, 'companies.parquet')
 TIERS = ['Breached / data exposed', 'Actively exploited CVE', 'Exposed critical service',
-         'Vulnerable software', 'Poor hygiene', 'Low signal']
+         'Vulnerable software', 'Poor hygiene']
 
 # Score column -> how a salesperson would say it. {n} is filled with the matching count.
 REASONS = {
@@ -57,14 +57,25 @@ def sector(domain):
     return 'Business'
 
 
-@st.cache_data
+COUNTS = ['kev_cves', 'hosts_high_epss', 'hosts_remote_access', 'hosts_database', 'hosts_industrial', 'hosts_eol']
+COLUMNS = ['company', 'risk_score', 'tier', 'country', 'city', 'ips', 'network_org', 'web_title', 'cdn_only', 'last_seen',
+           'kev_list', 'top_cves', 'exposed_services', 'tech', *COUNTS, *REASONS]
+
+
+# cache_resource keeps one shared copy (cache_data would copy the frame on every rerun, which
+# overflows the 1 GB Streamlit Cloud limit); the app never mutates these frames.
+@st.cache_resource
 def load():
-    df = pd.read_parquet(DATA)
-    df['sector'] = df['company'].map(sector)
+    # "Low signal" accounts (only minor hygiene issues) are not worth a sales call; skipping them
+    # halves memory.
+    df = pd.read_parquet(DATA, columns=COLUMNS, filters=[('tier', '!=', 'Low signal')])
+    df['sector'] = df['company'].map(sector).astype('category')
+    for col in ('tier', 'country', 'network_org'):
+        df[col] = df[col].astype('category')
     return df
 
 
-@st.cache_data
+@st.cache_resource
 def load_extras():
     ev = pd.read_parquet(os.path.join(HERE, 'evidence.parquet'))
     with open(os.path.join(HERE, 'stats.json')) as f:
