@@ -6,7 +6,7 @@
 2. Per-signal lift: how much more likely a company with each signal is to be breached.
 3. Spot-check lists (top 25 and a random 25) for a human to label as real prospect or not.
 """
-import os
+import json, os
 import duckdb
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -64,4 +64,7 @@ with open(OUT, 'w', encoding='utf-8') as f:
     f.write('## Accounts per tier\n\n' + tiers.to_markdown(index=False) + '\n\n')
     f.write('## Spot check: top 25\n\n' + top.to_markdown(index=False) + '\n\n')
     f.write('## Spot check: random 25\n\n' + rand.to_markdown(index=False) + '\n')
+with open(os.path.join(ROOT, 'app', 'data', 'eval.json'), 'w') as f:
+    json.dump({'auc': round(auc, 3), 'breached_hosts': n_pos, 'hosts': n_pos + n_neg, 'top10k_lift': round(top_share, 1),
+               'lift': lift.round(2).to_dict('records')}, f, indent=1)
 print(open(OUT, encoding='utf-8').read()[:2500])

@@ -1,0 +1,63 @@
+{
+ "auc": 0.701,
+ "breached_hosts": 56,
+ "hosts": 3350096,
+ "top10k_lift": 6.0,
+ "lift": [
+  {
+   "signal": "eol",
+   "hosts": 162144,
+   "lift": 15.13
+  },
+  {
+   "signal": "high_epss",
+   "hosts": 295946,
+   "lift": 2.43
+  },
+  {
+   "signal": "kev",
+   "hosts": 189871,
+   "lift": 1.89
+  },
+  {
+   "signal": "cert_expired",
+   "hosts": 35665,
+   "lift": 1.68
+  },
+  {
+   "signal": "self_signed",
+   "hosts": 84994,
+   "lift": 0.7
+  },
+  {
+   "signal": "remote",
+   "hosts": 26480,
+   "lift": 0.0
+  },
+  {
+   "signal": "legacy_tls",
+   "hosts": 57120,
+   "lift": 0.0
+  },
+  {
+   "signal": "anon_ftp",
+   "hosts": 957,
+   "lift": 0.0
+  },
+  {
+   "signal": "ntlm",
+   "hosts": 20326,
+   "lift": 0.0
+  },
+  {
+   "signal": "waf",
+   "hosts": 77793,
+   "lift": 0.0
+  },
+  {
+   "signal": "security_txt",
+   "hosts": 4247,
+   "lift": 0.0
+  }
+ ]
+}
