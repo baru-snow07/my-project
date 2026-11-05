@@ -8,6 +8,7 @@
 # MAGIC |---|---|---|---|
 # MAGIC | Bronze | `bronze_scan_raw` | Raw JSON lines, untouched | the `.json.zst` file |
 # MAGIC | Silver | `silver_scan_rows` | One row per (service, company) with the signals | `ingest.py` output Parquet |
+# MAGIC | Silver | `silver_latest` | The latest scan of each service only (re-scans and old months dropped) | — |
 # MAGIC | Silver | `silver_providers`, `silver_infra_domains` | Infrastructure learned from the data | rules 1–2c in `build.py` |
 # MAGIC | Gold | `gold_companies` | Scored, explainable companies | `companies.parquet` |
 # MAGIC | Gold | `gold_llm_hosting_labels` | LLM verdict: real org vs hosting/ISP | `llm_classify.py` |
@@ -270,13 +271,25 @@ if SOURCE == "raw":
 else:
     # Option B: reuse the Parquet ingest.py already produced on your laptop (data/rows/*.parquet).
     # Full scale, so the back-test reproduces the published AUC. Same columns, so everything below is identical.
-    silver = spark.read.parquet(f"{VOL}/parquet").select(*NAMES)
+    # Only full runs: ingest.py also writes *-sample.parquet test files, which would double-count.
+    silver = (spark.read.option("pathGlobFilter", "*[0-9].parquet").parquet(f"{VOL}/parquet")
+              .select(*NAMES))
 
 silver.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable("silver_scan_rows")
+
+# Keep only the latest scan of each service. One file already re-scans ~14% of services, and with monthly
+# files an issue fixed last month must not keep counting against the company.
+spark.sql("""
+    CREATE OR REPLACE TABLE silver_latest AS
+    SELECT * EXCEPT (rn) FROM (
+        SELECT *, row_number() OVER (PARTITION BY ip, port, key_type, company ORDER BY ts DESC) AS rn
+        FROM silver_scan_rows)
+    WHERE rn = 1""")
 display(spark.sql("""
-    SELECT count(*) AS rows, count(DISTINCT company) AS companies, count(DISTINCT ip) AS ips,
+    SELECT (SELECT count(*) FROM silver_scan_rows) AS all_rows, count(*) AS latest_rows,
+           count(DISTINCT company) AS companies, count(DISTINCT ip) AS ips,
            round(avg(edge::INT), 3) AS share_cdn_edge
-    FROM silver_scan_rows"""))
+    FROM silver_latest"""))
 
 # COMMAND ----------
 
@@ -295,14 +308,14 @@ INFRA_NAME_SQL = INFRA_NAME_RE.replace('\\', '\\\\')  # Spark SQL string literal
 # Rule 1: an org that 10+ different companies' domains live on is a network provider (a landlord).
 spark.sql("""
     CREATE OR REPLACE TABLE silver_providers AS
-    SELECT org FROM silver_scan_rows WHERE key_type = 'domain' AND NOT edge AND org IS NOT NULL
+    SELECT org FROM silver_latest WHERE key_type = 'domain' AND NOT edge AND org IS NOT NULL
     GROUP BY org HAVING count(DISTINCT company) >= 10""")
 
 # Flag rows that sit on a provider network once, so the rules below can use it inside aggregates.
 spark.sql("""
     CREATE OR REPLACE TEMP VIEW rows_p AS
     SELECT r.*, CASE WHEN r.org IS NULL THEN NULL ELSE p.org IS NOT NULL END AS provider_org
-    FROM silver_scan_rows r LEFT JOIN silver_providers p ON r.org = p.org""")
+    FROM silver_latest r LEFT JOIN silver_providers p ON r.org = p.org""")
 
 spark.sql(f"""
     CREATE OR REPLACE TABLE silver_infra_domains AS
@@ -345,9 +358,9 @@ display(spark.sql("""
 # COMMAND ----------
 
 common = [r.cve for r in spark.sql("""
-    WITH hosts AS (SELECT DISTINCT ip, cve FROM silver_scan_rows LATERAL VIEW explode(kev_cves) t AS cve
+    WITH hosts AS (SELECT DISTINCT ip, cve FROM silver_latest LATERAL VIEW explode(kev_cves) t AS cve
                    WHERE NOT edge AND n_cves > 0),
-         total AS (SELECT count(DISTINCT ip) AS n FROM silver_scan_rows WHERE NOT edge AND n_cves > 0)
+         total AS (SELECT count(DISTINCT ip) AS n FROM silver_latest WHERE NOT edge AND n_cves > 0)
     SELECT cve FROM hosts CROSS JOIN total GROUP BY cve, total.n HAVING count(*) >= 0.05 * total.n""").collect()]
 COMMON_SQL = ("array(" + ", ".join(f"'{c}'" for c in common) + ")") if common else "CAST(array() AS ARRAY<STRING>)"
 print("Common KEV CVEs (down-weighted):", common)
@@ -404,7 +417,7 @@ spark.sql(f"""
         bool_or(r.is_web) AND NOT bool_or(r.hsts) AS no_hsts,
         max(r.waf) AS waf, bool_or(r.security_txt) AS security_txt, bool_or(r.pqc) AS pqc,
         bool_and(r.edge) AS cdn_only, max(r.ts) AS last_seen
-    FROM silver_scan_rows r
+    FROM silver_latest r
     LEFT ANTI JOIN silver_infra_domains i ON r.key_type = 'domain' AND r.company = i.company
     LEFT ANTI JOIN silver_providers p ON r.key_type = 'org' AND r.company = p.org
     GROUP BY r.key_type, r.company""")
@@ -476,7 +489,7 @@ spark.sql(f"""
         bool_or(self_signed) AS self_signed, bool_or(anon_ftp) AS anon_ftp, bool_or(ntlm_leak) AS ntlm,
         bool_or(waf IS NOT NULL) AS waf, bool_or(security_txt) AS security_txt
     FROM (SELECT *, row_number() OVER (PARTITION BY ip, port ORDER BY ts DESC) AS rn
-          FROM silver_scan_rows WHERE NOT edge)
+          FROM silver_latest WHERE NOT edge)
     WHERE rn = 1 GROUP BY ip""")
 hosts = spark.sql(f"""SELECT *, {' + '.join(f'{v} * coalesce({k}, false)::INT' for k, v in EVAL_W.items())} AS score
                       FROM gold_eval_hosts""")
@@ -506,7 +519,7 @@ if n_pos and n_neg:
         print("Warning: fewer than 30 breached servers, so treat this AUC as directional only.")
 
 lift = spark.sql(" UNION ALL ".join(
-    f"SELECT '{s}' AS signal, count_if({s}) AS hosts, avg(breached::INT) FILTER (WHERE {s}) / avg(breached::INT) AS lift FROM hosts"
+    f"SELECT '{s}' AS signal, count_if({s}) AS hosts, try_divide(avg(breached::INT) FILTER (WHERE {s}), avg(breached::INT)) AS lift FROM hosts"
     for s in EVAL_W) + " ORDER BY lift DESC NULLS LAST")
 display(lift)
 

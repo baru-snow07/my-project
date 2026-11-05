@@ -7,7 +7,8 @@ query, chart and layout choice is reviewable in a diff.
 """
 import json, os
 
-T = 'databricks_demo_ws.cyber'
+# Must match the bundle's catalog/schema variables (the dashboard JSON has no variable substitution).
+T = f"{os.environ.get('CYBER_CATALOG', 'databricks_demo_ws')}.{os.environ.get('CYBER_SCHEMA', 'cyber')}"
 OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'cyber_prospecting.lvdash.json')
 
 # Brand: the same teal as the Streamlit app, one warm accent for "breached".
@@ -68,12 +69,12 @@ DATASETS = {
     'quality': ('Back-test', f"""
         WITH h AS (SELECT breached, {eval_score} AS score FROM {T}.gold_eval_hosts),
              r AS (SELECT breached, rank() OVER (ORDER BY score) + (count(*) OVER (PARTITION BY score) - 1) / 2.0 AS rk FROM h)
-        SELECT round((sum(rk) FILTER (WHERE breached) - count_if(breached) * (count_if(breached) + 1) / 2.0)
-                     / (count_if(breached) * count_if(NOT breached)), 3) AS auc,
+        SELECT round(try_divide(sum(rk) FILTER (WHERE breached) - count_if(breached) * (count_if(breached) + 1) / 2.0,
+                                count_if(breached) * count_if(NOT breached)), 3) AS auc,
                count_if(breached) AS breached_servers, count(*) AS servers
         FROM r"""),
     'lift': ('Lift per signal', ' UNION ALL '.join(
-        f"SELECT '{EVAL_NAMES[k]}' AS signal, round(avg(breached::INT) FILTER (WHERE {k}) / avg(breached::INT), 2) AS lift "
+        f"SELECT '{EVAL_NAMES[k]}' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE {k}), avg(breached::INT)), 2) AS lift "
         f"FROM {T}.gold_eval_hosts" for k in EVAL_W)),
     'removed': ('Infrastructure removed', f"""
         SELECT CASE rule WHEN 'generated_hostnames' THEN 'Reverse-DNS domains'

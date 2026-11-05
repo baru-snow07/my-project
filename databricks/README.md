@@ -53,15 +53,42 @@ Set the notebook's `source` to `raw` to ingest scan files through Auto Loader in
 
 | | Laptop (DuckDB) | Databricks (Spark SQL) |
 |---|---|---|
-| Silver rows | 6,196,731 | 6,196,731 |
+| Silver rows | 6,196,731 | 6,196,731 (5,305,341 after keeping the latest scan per service) |
 | Back-test AUC | 0.803 | **0.803** |
 | Breached servers (labels) | 56 | 56 |
 | Top account | berkeley.edu, 162 | berkeley.edu, 162 |
-| Prospects with a signal | 228,997 | 229,247 (+0.1%) |
-| Network providers / infra domains | 3,578 / ~55,000 | 3,577 / 54,743 |
+| Prospects with a signal | 228,997 | 229,319 (+0.1%) |
+| Network providers / infra domains | 3,578 / ~55,000 | 3,577 / 54,589 |
 
 The small differences come from how the two engines break ties in `mode()` and treat NULL organisations
 in the provider rule. Scores, tiers and the back-test are unchanged.
+
+## Review for future runs
+
+Checked against the live workspace on 2026-11-05. Fixed:
+
+| Issue | Evidence | Fix |
+|---|---|---|
+| Repeated scans counted twice | 6,196,731 rows but 5,305,341 unique (server, port, company); ~14% are re-scans in one file, and every new month adds more | `silver_latest` keeps only the latest scan of each service; all downstream steps read it. ~180 accounts had a known-exploited CVE only in an older scan. AUC unchanged (0.803) |
+| Division by zero fails the job | Databricks SQL raises `DIVIDE_BY_ZERO` (ANSI mode); the lift query divides by the breached share, so a month with no breaches would fail the run | `try_divide` in the notebook and in the dashboard's back-test and lift queries |
+| Test files double-counted | `ingest.py` also writes `*-sample.parquet` | Silver reads only `*[0-9].parquet` |
+| Long queries abandoned | `tools/sql.py` gave up after the API's 50 s wait | Polls until the statement finishes (10 min limit) |
+| Catalog hard-coded in the dashboard | Dashboard JSON can't use bundle variables | `CYBER_CATALOG` / `CYBER_SCHEMA` settings in `build_dashboard.py` |
+
+Verified working: raw `.json.zst` files are decompressed natively (`read_files(..., format => 'text')` read all 1,000
+lines of a test file), so the Auto Loader path works for real scan files.
+
+Known, not changed:
+- **One large `.zst` file is read by a single worker** (zstd isn't splittable). Many smaller files process in parallel.
+- **Silver is rebuilt from all of Bronze on every run.** Fine at this size; at hundreds of files a month, switch to an
+  incremental `MERGE` keyed on (ip, port, company).
+- **If `bronze_scan_raw` is ever dropped, delete `landing/_checkpoints/bronze_scan_raw` too**, or Auto Loader will skip
+  files it thinks it already loaded.
+- **`mode(org)` breaks ties arbitrarily**, so the network owner shown can differ between runs for a few companies.
+- **The AI step (`run_llm = true`) has not been run in this workspace**; it needs a model serving endpoint.
+- **The job has no failure alerts or retries.** Add `email_notifications` before relying on the file-arrival trigger.
+- **The laptop pipeline (`pipeline/build.py`) still counts repeated scans.** Its published numbers are from a single
+  file and match this run's AUC; apply the same latest-scan rule there before processing more than one file.
 
 ## Cost
 
