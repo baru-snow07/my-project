@@ -8,6 +8,8 @@ systems need security help, so a cybersecurity sales team knows who to call firs
 - **Exploration notes:** [`explore/FINDINGS.md`](explore/FINDINGS.md)
 - **Evaluation:** [`eval/report.md`](eval/report.md), [`eval/weights.md`](eval/weights.md)
 - **How it was built with AI:** [`DEVLOG.md`](DEVLOG.md)
+- **On Azure Databricks:** [`databricks/`](databricks/README.md): the same pipeline as Bronze/Silver/Gold Delta tables,
+  a serverless job, and an AI/BI dashboard, deployed as an Asset Bundle. Same results: AUC 0.803, same top accounts.
 
 ## How a salesperson uses it
 

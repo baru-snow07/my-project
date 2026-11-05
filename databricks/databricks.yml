@@ -1,0 +1,29 @@
+# Databricks Asset Bundle: the Cyber Prospecting lakehouse pipeline and its dashboard, deployed as code.
+#
+#   cd databricks
+#   databricks bundle validate -p cyber
+#   databricks bundle deploy -p cyber
+#   databricks bundle run cyber_prospecting_pipeline -p cyber
+bundle:
+  name: cyber-prospecting
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds the cyber schema
+    default: databricks_demo_ws
+  schema:
+    description: Schema for Bronze, Silver and Gold tables and the landing volume
+    default: cyber
+  warehouse_id:
+    description: SQL warehouse that runs the dashboard queries (serverless 2X-Small, auto-stop 10 min)
+    default: 329344431e53eb52
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405616568941532.12.azuredatabricks.net
