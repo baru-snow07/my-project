@@ -46,8 +46,38 @@ databricks bundle deploy -p cyber
 databricks bundle run cyber_prospecting_pipeline -p cyber
 ```
 
-The job reads `landing/parquet` (the full 14.6M-record run, produced on the laptop by `pipeline/ingest.py`).
-Set the notebook's `source` to `raw` to ingest scan files through Auto Loader instead.
+## How data gets in (Bronze)
+
+Every run, **Auto Loader** picks up new scan files in `landing/raw` and appends them to `bronze_scan_raw`:
+one row per raw JSON line, plus the source file and load time. The checkpoint in `landing/_checkpoints` records
+which files are done, so a re-run loads only new files. Only `*.json*` files are read.
+
+Silver then reads one of two sources (`source` parameter):
+
+| `source` | Silver reads | Used for |
+|---|---|---|
+| `parquet` (the job's default) | `landing/parquet`: the full 14.6M-record file, already parsed on the laptop by `pipeline/ingest.py` | The published results: avoids re-uploading the 16 GB file over a slow connection |
+| `raw` | `bronze_scan_raw`, parsed with the same `extract()` logic | The true lakehouse path for new monthly files |
+
+**Verified end to end on 2026-11-05** with a 50,000-record sample of the real scan file (`*-sample50k.json.zst`),
+in a separate schema `cyber_raw_e2e` so the dashboard's numbers were not touched:
+
+| Step | Result |
+|---|---|
+| Bronze | 50,000 records from 1 file |
+| Silver | 21,593 rows: **identical** to the laptop parser on the same 50,000 records |
+| Gold | 7,944 companies, 1,792 prospects with a signal |
+| Re-run | 0 new records loaded (checkpoint works) |
+
+The main schema's Bronze holds the same sample, while its Silver and Gold come from the full Parquet.
+
+Earlier, a notebook file had been uploaded into `landing/raw` by mistake and loaded as 625 rows. It was not used by
+any result (the job reads Parquet). The file, the old table (now `zz_archive_bronze_stray_notebook_20261101`) and its
+checkpoint are kept in `landing/_archive/` and can be deleted.
+
+```bash
+databricks bundle run cyber_prospecting_pipeline -p cyber --notebook-params schema=cyber_raw_e2e,source=raw
+```
 
 ## Results: same answers as the laptop pipeline
 
@@ -73,6 +103,7 @@ Checked against the live workspace on 2026-11-05. Fixed:
 | Division by zero fails the job | Databricks SQL raises `DIVIDE_BY_ZERO` (ANSI mode); the lift query divides by the breached share, so a month with no breaches would fail the run | `try_divide` in the notebook and in the dashboard's back-test and lift queries |
 | Test files double-counted | `ingest.py` also writes `*-sample.parquet` | Silver reads only `*[0-9].parquet` |
 | Long queries abandoned | `tools/sql.py` gave up after the API's 50 s wait | Polls until the statement finishes (10 min limit) |
+| Non-scan files loaded into Bronze | A notebook in `landing/raw` became 625 Bronze rows | Bronze reads only `*.json*` files and runs on every job, whatever Silver's source |
 | Catalog hard-coded in the dashboard | Dashboard JSON can't use bundle variables | `CYBER_CATALOG` / `CYBER_SCHEMA` settings in `build_dashboard.py` |
 
 Verified working: raw `.json.zst` files are decompressed natively (`read_files(..., format => 'text')` read all 1,000

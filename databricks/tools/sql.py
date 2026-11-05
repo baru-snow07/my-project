@@ -28,7 +28,8 @@ def run(sql, timeout_s=600):
         res = api('get', f"/api/2.0/sql/statements/{res['statement_id']}")
     if res['status']['state'] != 'SUCCEEDED':
         sys.exit(json.dumps(res['status'], indent=1))
-    cols = [c['name'] for c in res['manifest']['schema']['columns']]
+    # DDL such as ALTER/CREATE returns no columns.
+    cols = [c['name'] for c in res.get('manifest', {}).get('schema', {}).get('columns', [])]
     return cols, res.get('result', {}).get('data_array', [])
 
 

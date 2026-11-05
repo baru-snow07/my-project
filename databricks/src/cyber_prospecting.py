@@ -68,11 +68,18 @@ print(f"Upload files into {VOL}/raw (scan sample .jsonl.gz) or {VOL}/parquet (ex
 
 # COMMAND ----------
 
+import fnmatch
 from pyspark.sql import functions as F
 
-if SOURCE == "raw":
+# Bronze always lands whatever scan files have arrived, whichever source Silver reads below.
+# Only scan files (*.json, *.json.zst, *.jsonl.gz, ...): a stray notebook dropped here once got loaded as data.
+RAW_GLOB = "*.json*"
+raw_files = [f for f in dbutils.fs.ls(f"{VOL}/raw") if fnmatch.fnmatch(f.name, RAW_GLOB)]
+print(f"{len(raw_files)} scan file(s) in {VOL}/raw")
+if raw_files:
     (spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "text")
+        .option("pathGlobFilter", RAW_GLOB)
         .load(f"{VOL}/raw")
         .select(F.col("value").alias("raw_json"),
                 F.col("_metadata.file_path").alias("source_file"),
