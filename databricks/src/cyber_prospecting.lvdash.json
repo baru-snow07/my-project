@@ -1,0 +1,1147 @@
+{
+ "datasets": [
+  {
+   "name": "prospects",
+   "displayName": "Prospects",
+   "queryLines": [
+    "SELECT company, tier, risk_score AS score, CASE WHEN company RLIKE '\\\\.edu|\\\\.ac\\\\.|univ|school|college' THEN 'Education' WHEN company RLIKE '\\\\.gov|\\\\.gob\\\\.|\\\\.go\\\\.|\\\\.mil' THEN 'Government' WHEN company RLIKE 'health|hospital|clinic|medic|pharma' THEN 'Healthcare' WHEN company RLIKE 'bank|financ|insur|invest|credit' THEN 'Finance' ELSE 'Business' END AS sector, country, ips, network_org, CASE greatest(s_compromised, s_unauth_data, s_kev, s_ransomware, s_high_epss, s_remote, s_database, s_industrial, s_open_dir, s_ntlm, s_eol, s_cert, s_legacy_tls, s_self_signed, s_no_hsts) WHEN s_compromised THEN 'Already compromised' WHEN s_unauth_data THEN 'Data open without password' WHEN s_kev THEN 'Known-exploited CVE' WHEN s_ransomware THEN 'Ransomware-linked CVE' WHEN s_high_epss THEN 'Likely-exploited CVE (EPSS)' WHEN s_remote THEN 'Remote access exposed' WHEN s_database THEN 'Database exposed' WHEN s_industrial THEN 'Industrial control exposed' WHEN s_open_dir THEN 'Open directory' WHEN s_ntlm THEN 'Leaks internal names' WHEN s_eol THEN 'End-of-life software' WHEN s_cert THEN 'Expired certificate' WHEN s_legacy_tls THEN 'Old TLS versions' WHEN s_self_signed THEN 'Self-signed certs' WHEN s_no_hsts THEN 'No HSTS' END AS top_reason, array_join(exposed_services, ', ') AS exposed_services, array_join(slice(kev_list, 1, 3), ', ') AS known_exploited_cves FROM databricks_demo_ws.cyber.gold_prospects WHERE tier <> 'Low signal'"
+   ]
+  },
+  {
+   "name": "kpis",
+   "displayName": "Headline counts",
+   "queryLines": [
+    "SELECT count(*) AS accounts, count_if(tier = 'Breached / data exposed') AS breached, count_if(tier = 'Actively exploited CVE') AS exploited, count_if(tier = 'Exposed critical service') AS exposed FROM databricks_demo_ws.cyber.gold_prospects WHERE tier <> 'Low signal'"
+   ]
+  },
+  {
+   "name": "tiers",
+   "displayName": "Accounts by tier",
+   "queryLines": [
+    "SELECT tier, count(*) AS companies FROM databricks_demo_ws.cyber.gold_prospects GROUP BY tier"
+   ]
+  },
+  {
+   "name": "countries",
+   "displayName": "Top countries",
+   "queryLines": [
+    "SELECT country, count(*) AS companies FROM databricks_demo_ws.cyber.gold_prospects WHERE tier <> 'Low signal' AND country IS NOT NULL GROUP BY country ORDER BY companies DESC LIMIT 15"
+   ]
+  },
+  {
+   "name": "signals",
+   "displayName": "Companies per signal",
+   "queryLines": [
+    "SELECT 'Already compromised' AS signal, count_if(s_compromised > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Data open without password' AS signal, count_if(s_unauth_data > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Known-exploited CVE' AS signal, count_if(s_kev > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Ransomware-linked CVE' AS signal, count_if(s_ransomware > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Likely-exploited CVE (EPSS)' AS signal, count_if(s_high_epss > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Remote access exposed' AS signal, count_if(s_remote > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Database exposed' AS signal, count_if(s_database > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Industrial control exposed' AS signal, count_if(s_industrial > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Open directory' AS signal, count_if(s_open_dir > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Leaks internal names' AS signal, count_if(s_ntlm > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'End-of-life software' AS signal, count_if(s_eol > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Expired certificate' AS signal, count_if(s_cert > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Old TLS versions' AS signal, count_if(s_legacy_tls > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'Self-signed certs' AS signal, count_if(s_self_signed > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects UNION ALL SELECT 'No HSTS' AS signal, count_if(s_no_hsts > 0) AS companies FROM databricks_demo_ws.cyber.gold_prospects"
+   ]
+  },
+  {
+   "name": "services",
+   "displayName": "Exposed services",
+   "queryLines": [
+    "SELECT service, count(*) AS companies FROM databricks_demo_ws.cyber.gold_prospects LATERAL VIEW explode(exposed_services) s AS service GROUP BY service ORDER BY companies DESC LIMIT 12"
+   ]
+  },
+  {
+   "name": "cves",
+   "displayName": "Known-exploited CVEs",
+   "queryLines": [
+    "SELECT cve, count(*) AS companies FROM databricks_demo_ws.cyber.gold_prospects LATERAL VIEW explode(kev_list) c AS cve GROUP BY cve ORDER BY companies DESC LIMIT 15"
+   ]
+  },
+  {
+   "name": "quality",
+   "displayName": "Back-test",
+   "queryLines": [
+    "WITH h AS (SELECT breached, 25 * coalesce(kev, false)::INT + 10 * coalesce(high_epss, false)::INT + 12 * coalesce(remote, false)::INT + 8 * coalesce(eol, false)::INT + 6 * coalesce(cert_expired, false)::INT + 5 * coalesce(legacy_tls, false)::INT + 3 * coalesce(self_signed, false)::INT + 6 * coalesce(anon_ftp, false)::INT + 5 * coalesce(ntlm, false)::INT + -8 * coalesce(waf, false)::INT + -10 * coalesce(security_txt, false)::INT AS score FROM databricks_demo_ws.cyber.gold_eval_hosts), r AS (SELECT breached, rank() OVER (ORDER BY score) + (count(*) OVER (PARTITION BY score) - 1) / 2.0 AS rk FROM h) SELECT round(try_divide(sum(rk) FILTER (WHERE breached) - count_if(breached) * (count_if(breached) + 1) / 2.0, count_if(breached) * count_if(NOT breached)), 3) AS auc, count_if(breached) AS breached_servers, count(*) AS servers FROM r"
+   ]
+  },
+  {
+   "name": "lift",
+   "displayName": "Lift per signal",
+   "queryLines": [
+    "SELECT 'Known-exploited CVE' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE kev), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Likely-exploited CVE' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE high_epss), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Remote access exposed' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE remote), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'End-of-life software' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE eol), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Expired certificate' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE cert_expired), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Old TLS versions' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE legacy_tls), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Self-signed certs' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE self_signed), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Anonymous FTP' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE anon_ftp), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Leaks internal names' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE ntlm), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Behind a WAF' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE waf), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts UNION ALL SELECT 'Publishes security.txt' AS signal, round(try_divide(avg(breached::INT) FILTER (WHERE security_txt), avg(breached::INT)), 2) AS lift FROM databricks_demo_ws.cyber.gold_eval_hosts"
+   ]
+  },
+  {
+   "name": "removed",
+   "displayName": "Infrastructure removed",
+   "queryLines": [
+    "SELECT CASE rule WHEN 'generated_hostnames' THEN 'Reverse-DNS domains' WHEN 'not_claimed' THEN 'Failed ownership check' WHEN 'subdomain_platform' THEN 'Dynamic DNS / shared hosting' ELSE 'Provider brand or name' END AS reason, count(*) AS domains FROM databricks_demo_ws.cyber.silver_infra_domains GROUP BY rule UNION ALL SELECT 'Network providers (orgs)', count(*) FROM databricks_demo_ws.cyber.silver_providers"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "prospects",
+   "displayName": "Prospects",
+   "layout": [
+    {
+     "widget": {
+      "name": "intro",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## Cyber Prospecting",
+        "Companies ranked by how urgently their internet-facing systems need security help, from **14.6M internet-scan records**.",
+        "Every score is the sum of named signals, so each account comes with its reason to call. IPs are never shown."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_accounts",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "accounts",
+           "expression": "`accounts`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "accounts",
+         "displayName": "Accounts worth a call"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Accounts worth a call"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_breached",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "breached",
+           "expression": "`breached`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "breached",
+         "displayName": "Breached / data exposed"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Breached / data exposed"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 2,
+      "width": 1,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_exploited",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "exploited",
+           "expression": "`exploited`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "exploited",
+         "displayName": "Actively exploited CVE"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Actively exploited CVE"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_exposed",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "exposed",
+           "expression": "`exposed`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "exposed",
+         "displayName": "Exposed critical service"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Exposed critical service"
+       }
+      }
+     },
+     "position": {
+      "x": 5,
+      "y": 2,
+      "width": 1,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "b_tiers",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "tiers",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "tier",
+           "expression": "`tier`"
+          },
+          {
+           "name": "companies",
+           "expression": "`companies`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "companies",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Companies"
+        },
+        "y": {
+         "fieldName": "tier",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Tier"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#0B6E8A"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Why now: accounts by tier",
+        "showDescription": true,
+        "description": "Tier = the single strongest reason. Breached beats exploited beats exposed."
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 4,
+      "width": 3,
+      "height": 5
+     }
+    },
+    {
+     "widget": {
+      "name": "b_countries",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "countries",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "country",
+           "expression": "`country`"
+          },
+          {
+           "name": "companies",
+           "expression": "`companies`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "companies",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Companies"
+        },
+        "y": {
+         "fieldName": "country",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Country"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#56636F"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Top countries"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 4,
+      "width": 3,
+      "height": 5
+     }
+    },
+    {
+     "widget": {
+      "name": "f_tier",
+      "queries": [
+       {
+        "name": "f_tier_q",
+        "query": {
+         "datasetName": "prospects",
+         "disaggregated": false,
+         "fields": [
+          {
+           "name": "tier",
+           "expression": "`tier`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "filter-multi-select",
+       "encodings": {
+        "fields": [
+         {
+          "fieldName": "tier",
+          "displayName": "Why now",
+          "queryName": "f_tier_q"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Why now"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 9,
+      "width": 2,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
+      "name": "f_sector",
+      "queries": [
+       {
+        "name": "f_sector_q",
+        "query": {
+         "datasetName": "prospects",
+         "disaggregated": false,
+         "fields": [
+          {
+           "name": "sector",
+           "expression": "`sector`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "filter-multi-select",
+       "encodings": {
+        "fields": [
+         {
+          "fieldName": "sector",
+          "displayName": "Sector",
+          "queryName": "f_sector_q"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Sector"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 9,
+      "width": 2,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
+      "name": "f_country",
+      "queries": [
+       {
+        "name": "f_country_q",
+        "query": {
+         "datasetName": "prospects",
+         "disaggregated": false,
+         "fields": [
+          {
+           "name": "country",
+           "expression": "`country`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "filter-multi-select",
+       "encodings": {
+        "fields": [
+         {
+          "fieldName": "country",
+          "displayName": "Country",
+          "queryName": "f_country_q"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Country"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 9,
+      "width": 2,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
+      "name": "t_prospects",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "prospects",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "company",
+           "expression": "`company`"
+          },
+          {
+           "name": "score",
+           "expression": "`score`"
+          },
+          {
+           "name": "tier",
+           "expression": "`tier`"
+          },
+          {
+           "name": "top_reason",
+           "expression": "`top_reason`"
+          },
+          {
+           "name": "sector",
+           "expression": "`sector`"
+          },
+          {
+           "name": "country",
+           "expression": "`country`"
+          },
+          {
+           "name": "ips",
+           "expression": "`ips`"
+          },
+          {
+           "name": "exposed_services",
+           "expression": "`exposed_services`"
+          },
+          {
+           "name": "known_exploited_cves",
+           "expression": "`known_exploited_cves`"
+          },
+          {
+           "name": "network_org",
+           "expression": "`network_org`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 1,
+       "widgetType": "table",
+       "encodings": {
+        "columns": [
+         {
+          "fieldName": "company",
+          "title": "Company",
+          "displayName": "Company"
+         },
+         {
+          "fieldName": "score",
+          "title": "Score",
+          "displayName": "Score"
+         },
+         {
+          "fieldName": "tier",
+          "title": "Why now",
+          "displayName": "Why now"
+         },
+         {
+          "fieldName": "top_reason",
+          "title": "Top reason",
+          "displayName": "Top reason"
+         },
+         {
+          "fieldName": "sector",
+          "title": "Sector",
+          "displayName": "Sector"
+         },
+         {
+          "fieldName": "country",
+          "title": "Country",
+          "displayName": "Country"
+         },
+         {
+          "fieldName": "ips",
+          "title": "IPs",
+          "displayName": "IPs"
+         },
+         {
+          "fieldName": "exposed_services",
+          "title": "Exposed services",
+          "displayName": "Exposed services"
+         },
+         {
+          "fieldName": "known_exploited_cves",
+          "title": "Known-exploited CVEs",
+          "displayName": "Known-exploited CVEs"
+         },
+         {
+          "fieldName": "network_org",
+          "title": "Network owner",
+          "displayName": "Network owner"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Accounts to call first",
+        "showDescription": true,
+        "description": "Sorted by score; filter above. Click a column to re-sort."
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 10,
+      "width": 6,
+      "height": 10
+     }
+    }
+   ]
+  },
+  {
+   "name": "signals",
+   "displayName": "Signals",
+   "layout": [
+    {
+     "widget": {
+      "name": "sig_intro",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## What the signals say",
+        "Counts of prospects showing each signal. Urgent signals (breached, exploited) score most; hygiene signals score least."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
+      "name": "b_signals",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "signals",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "signal",
+           "expression": "`signal`"
+          },
+          {
+           "name": "companies",
+           "expression": "`companies`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "companies",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Companies"
+        },
+        "y": {
+         "fieldName": "signal",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Signal"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#0B6E8A"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Companies per signal"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 1,
+      "width": 3,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "b_services",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "services",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "service",
+           "expression": "`service`"
+          },
+          {
+           "name": "companies",
+           "expression": "`companies`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "companies",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Companies"
+        },
+        "y": {
+         "fieldName": "service",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Service"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#C47F17"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Services exposed to the internet",
+        "showDescription": true,
+        "description": "Counted only when the protocol actually answered, never from the probe name."
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 1,
+      "width": 3,
+      "height": 8
+     }
+    },
+    {
+     "widget": {
+      "name": "b_cves",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "cves",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "cve",
+           "expression": "`cve`"
+          },
+          {
+           "name": "companies",
+           "expression": "`companies`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "companies",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Companies"
+        },
+        "y": {
+         "fieldName": "cve",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Cve"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#B3261E"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Most common known-exploited CVEs",
+        "showDescription": true,
+        "description": "CVEs on 5%+ of vulnerable hosts are mostly version-number false matches and are down-weighted in the score."
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 9,
+      "width": 6,
+      "height": 7
+     }
+    }
+   ]
+  },
+  {
+   "name": "quality",
+   "displayName": "Does it work",
+   "layout": [
+    {
+     "widget": {
+      "name": "q_intro",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## Does the score work?",
+        "Back-test: every server is scored **without** the breach signals, then we check whether servers that were actually",
+        "breached (compromised tag or open database) rank higher. AUC 0.5 = random, 1.0 = perfect."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_auc",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "quality",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "auc",
+           "expression": "`auc`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "auc",
+         "displayName": "AUC (back-test)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "AUC (back-test)"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_breached_servers",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "quality",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "breached_servers",
+           "expression": "`breached_servers`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "breached_servers",
+         "displayName": "Breached servers (labels)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Breached servers (labels)"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_servers",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "quality",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "servers",
+           "expression": "`servers`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "servers",
+         "displayName": "Servers scored"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Servers scored"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 2,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "b_lift",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "lift",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "signal",
+           "expression": "`signal`"
+          },
+          {
+           "name": "lift",
+           "expression": "`lift`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "lift",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Lift"
+        },
+        "y": {
+         "fieldName": "signal",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Signal"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#0B6E8A"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "How much more often servers with each signal were breached",
+        "showDescription": true,
+        "description": "1.0 = no effect. Only ~56 labelled breaches, so read as direction, not precision."
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 4,
+      "width": 3,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "b_removed",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "removed",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "reason",
+           "expression": "`reason`"
+          },
+          {
+           "name": "domains",
+           "expression": "`domains`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "domains",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Domains"
+        },
+        "y": {
+         "fieldName": "reason",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Reason"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#56636F"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Infrastructure removed before scoring",
+        "showDescription": true,
+        "description": "Rules learned from the data, not a blocklist: they get more accurate as more files arrive."
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 4,
+      "width": 3,
+      "height": 7
+     }
+    }
+   ]
+  }
+ ]
+}

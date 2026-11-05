@@ -1,0 +1,22 @@
+# The whole pipeline as one serverless job: Bronze → Silver → Gold → back-test (MLflow).
+# Triggered by a new file landing in the volume, so monthly files are processed as they arrive.
+resources:
+  jobs:
+    cyber_prospecting_pipeline:
+      name: cyber-prospecting-pipeline
+      description: Scores companies by cybersecurity need from internet-scan data and logs the back-test to MLflow.
+      trigger:
+        pause_status: PAUSED  # unpause in the Jobs UI to run on every new file
+        file_arrival:
+          url: /Volumes/${var.catalog}/${var.schema}/landing/parquet/
+      tasks:
+        - task_key: build_gold
+          notebook_task:
+            notebook_path: ../src/cyber_prospecting.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              source: parquet
+              run_llm: "false"
+      max_concurrent_runs: 1
+      timeout_seconds: 7200
