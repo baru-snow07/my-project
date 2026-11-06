@@ -12,6 +12,7 @@ shows the results to sales and to anyone asking "does the score work?".
 | `resources/pipeline.job.yml` | Serverless job, triggered when a new file lands in the volume (trigger starts paused) |
 | `resources/dashboard.yml` | The AI/BI dashboard resource |
 | `src/cyber_prospecting.py` | The pipeline notebook: Auto Loader Bronze, Silver signals, learned infrastructure rules, Gold scoring, back-test to MLflow, optional `ai_query` classifier |
+| `src/hosting_classifier.py` | Second job task: a small model learns Claude's "real organisation vs hosting/ISP" labels, graded on held-out labels, registered in Unity Catalog |
 | `src/cyber_prospecting.lvdash.json` | Dashboard definition, **generated** by `tools/build_dashboard.py` |
 | `tools/build_dashboard.py` | The dashboard design as readable Python: queries, charts, layout, colours |
 | `tools/sql.py` | Run a SQL statement on the warehouse from the terminal (used to test every dashboard query) |
@@ -26,14 +27,59 @@ shows the results to sales and to anyone asking "does the score work?".
 | Silver | `silver_providers`, `silver_infra_domains` | Infrastructure learned from the data | `build.py` rules |
 | Gold | `gold_companies`, view `gold_prospects` | Scored, explainable companies | `companies.parquet` |
 | Gold | `gold_eval_hosts` | Per-server back-test features | `evaluate.py` |
+| Silver | `silver_hosting_features` | Per-domain clues for the AI classifier | — |
+| Gold | `gold_hosting_predictions`, `gold_hosting_eval` | AI business type per domain; student vs teacher grades | `llm_classify.py` |
 
 ## Dashboard
 
-Three pages:
+Four pages:
 1. **Prospects:** headline counts, accounts by "why now" tier, top countries, and a filterable table of accounts to call,
    each with its top reason, exposed services and known-exploited CVEs. IPs are never shown.
 2. **Signals:** companies per signal, services exposed to the internet, the most common known-exploited CVEs.
 3. **Does it work:** the back-test AUC computed live in SQL, lift per signal, and the infrastructure removed before scoring.
+4. **AI classifier:** the small model against Claude on the same held-out labels, and what it says about prospects.
+   The Prospects page also gets a *Business type (AI)* column and filter.
+
+## AI classifier: Claude as teacher, a small model as student (no paid AI calls)
+
+**Problem.** Hosting companies and ISPs score high because their *customers'* servers are insecure, but they are not
+the buyer. The rules remove most of them, not all.
+
+**Approach.**
+1. *Teacher:* Claude labelled 500 top domains once (`eval/llm_labels.csv`, in a Claude Code session, $0 API spend).
+2. *Student:* a scikit-learn model learns that judgement from 20 clues already in Gold, for example: does the network
+   owner's name match the domain, is it a university or government network, does the website title mention hosting,
+   is there a hosting control panel. Logistic regression and random forest are compared by 5-fold cross-validation on
+   the training set; logistic regression won.
+3. *Grade:* on 90 labels from each domain's About/Contact page (`heldout_labels.csv` + `reference_labels.csv`). All 90
+   are **removed from training**, and they are not Claude's labels, so the grade is independent of the teacher.
+4. *Run:* second task of the job, so it re-scores every refresh. Logged to MLflow; registered as
+   `databricks_demo_ws.cyber.hosting_classifier`, alias `@champion`.
+
+**Results on the 90 held-out domains** (2026-11-06). Every version is shown, not just the best:
+
+| Version | Change | Answers given | Correct when it answers | Hosting caught | Prospects it labels hosting |
+|---|---|---|---|---|---|
+| v1 | first model | 77% | 81% | 17/29 | 71,810 |
+| v2 | "hosting-sounding network" counts only if the domain owns it; university/government clue | 81% | 81% | 20/29 | 58,590 |
+| v3 | answers only for domains with 2+ servers | 81% | 81% | 20/29 | 8,775 |
+| **v4 (current)** | answers only for domains with 6+ servers (training set's 25th percentile) | **61%** | **85%** | 16/29 | 1,098 |
+| Claude (teacher) | — | 96% | 93% | 26/29 | (500 domains only) |
+
+Why v3 and v4: the teacher labelled top prospects (median 10 servers), but 89% of prospects have one server. A spot
+check of v2/v3 found small businesses on Amazon, a Japanese temple and a Chilean university called "hosting": the
+model was guessing on domains unlike anything it learned from. v4 says *Not sure* for those instead.
+The v4 cut-off was chosen after seeing held-out results, so its 85% is slightly optimistic; the reasoning
+(stay inside the training data) does not depend on the held-out set.
+
+**What this shows.** Learning from an LLM's labels gives a free model that runs on every refresh, but here it is
+narrower and less accurate than the LLM. It classifies 2,292 prospects (the larger ones, which are also the top of the
+call list). To cover small domains it would need labels for small domains, which means paying for more LLM labels or
+labelling by hand.
+
+```bash
+databricks bundle run cyber_prospecting_pipeline -p cyber --only hosting_classifier
+```
 
 ## Run it
 
@@ -116,7 +162,10 @@ Known, not changed:
 - **If `bronze_scan_raw` is ever dropped, delete `landing/_checkpoints/bronze_scan_raw` too**, or Auto Loader will skip
   files it thinks it already loaded.
 - **`mode(org)` breaks ties arbitrarily**, so the network owner shown can differ between runs for a few companies.
-- **The AI step (`run_llm = true`) has not been run in this workspace**; it needs a model serving endpoint.
+- **The `ai_query` step (`run_llm = true`) has not been run in this workspace**: it is billed per token, so the free
+  classifier above is used instead.
+- **The AI classifier's dashboard note says "6+ servers"**: that number comes from the training data and is written into
+  the dashboard text, so update `build_dashboard.py` if the labels change.
 - **The job has no failure alerts or retries.** Add `email_notifications` before relying on the file-arrival trigger.
 - **The laptop pipeline (`pipeline/build.py`) still counts repeated scans.** Its published numbers are from a single
   file and match this run's AUC; apply the same latest-scan rule there before processing more than one file.
@@ -126,4 +175,5 @@ Known, not changed:
 - **Job:** serverless, under 2 minutes for the full 6.2M rows.
 - **Dashboard:** a serverless 2X-Small SQL warehouse that auto-stops after 10 idle minutes, so it costs only while
   someone is looking at the dashboard.
-- **AI step (optional, `run_llm = true`):** pay-per-token `ai_query` over the top 50 prospects, a few cents per run.
+- **AI classifier:** no AI calls; about 1.5 minutes of the same serverless compute per run.
+- **AI step (optional, `run_llm = true`):** pay-per-token `ai_query` over the top 50 prospects, a few cents per run. Off.

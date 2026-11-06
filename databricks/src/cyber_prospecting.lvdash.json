@@ -4,7 +4,7 @@
    "name": "prospects",
    "displayName": "Prospects",
    "queryLines": [
-    "SELECT company, tier, risk_score AS score, CASE WHEN company RLIKE '\\\\.edu|\\\\.ac\\\\.|univ|school|college' THEN 'Education' WHEN company RLIKE '\\\\.gov|\\\\.gob\\\\.|\\\\.go\\\\.|\\\\.mil' THEN 'Government' WHEN company RLIKE 'health|hospital|clinic|medic|pharma' THEN 'Healthcare' WHEN company RLIKE 'bank|financ|insur|invest|credit' THEN 'Finance' ELSE 'Business' END AS sector, country, ips, network_org, CASE greatest(s_compromised, s_unauth_data, s_kev, s_ransomware, s_high_epss, s_remote, s_database, s_industrial, s_open_dir, s_ntlm, s_eol, s_cert, s_legacy_tls, s_self_signed, s_no_hsts) WHEN s_compromised THEN 'Already compromised' WHEN s_unauth_data THEN 'Data open without password' WHEN s_kev THEN 'Known-exploited CVE' WHEN s_ransomware THEN 'Ransomware-linked CVE' WHEN s_high_epss THEN 'Likely-exploited CVE (EPSS)' WHEN s_remote THEN 'Remote access exposed' WHEN s_database THEN 'Database exposed' WHEN s_industrial THEN 'Industrial control exposed' WHEN s_open_dir THEN 'Open directory' WHEN s_ntlm THEN 'Leaks internal names' WHEN s_eol THEN 'End-of-life software' WHEN s_cert THEN 'Expired certificate' WHEN s_legacy_tls THEN 'Old TLS versions' WHEN s_self_signed THEN 'Self-signed certs' WHEN s_no_hsts THEN 'No HSTS' END AS top_reason, array_join(exposed_services, ', ') AS exposed_services, array_join(slice(kev_list, 1, 3), ', ') AS known_exploited_cves FROM databricks_demo_ws.cyber.gold_prospects WHERE tier <> 'Low signal'"
+    "SELECT company, tier, risk_score AS score, CASE WHEN company RLIKE '\\\\.edu|\\\\.ac\\\\.|univ|school|college' THEN 'Education' WHEN company RLIKE '\\\\.gov|\\\\.gob\\\\.|\\\\.go\\\\.|\\\\.mil' THEN 'Government' WHEN company RLIKE 'health|hospital|clinic|medic|pharma' THEN 'Healthcare' WHEN company RLIKE 'bank|financ|insur|invest|credit' THEN 'Finance' ELSE 'Business' END AS sector, country, ips, network_org, CASE greatest(s_compromised, s_unauth_data, s_kev, s_ransomware, s_high_epss, s_remote, s_database, s_industrial, s_open_dir, s_ntlm, s_eol, s_cert, s_legacy_tls, s_self_signed, s_no_hsts) WHEN s_compromised THEN 'Already compromised' WHEN s_unauth_data THEN 'Data open without password' WHEN s_kev THEN 'Known-exploited CVE' WHEN s_ransomware THEN 'Ransomware-linked CVE' WHEN s_high_epss THEN 'Likely-exploited CVE (EPSS)' WHEN s_remote THEN 'Remote access exposed' WHEN s_database THEN 'Database exposed' WHEN s_industrial THEN 'Industrial control exposed' WHEN s_open_dir THEN 'Open directory' WHEN s_ntlm THEN 'Leaks internal names' WHEN s_eol THEN 'End-of-life software' WHEN s_cert THEN 'Expired certificate' WHEN s_legacy_tls THEN 'Old TLS versions' WHEN s_self_signed THEN 'Self-signed certs' WHEN s_no_hsts THEN 'No HSTS' END AS top_reason, array_join(exposed_services, ', ') AS exposed_services, array_join(slice(kev_list, 1, 3), ', ') AS known_exploited_cves, CASE h.ai_business_type WHEN 'end_organisation' THEN 'Real organisation' WHEN 'hosting_or_isp' THEN 'Hosting / ISP' ELSE 'Not sure' END AS business_type FROM databricks_demo_ws.cyber.gold_prospects LEFT JOIN databricks_demo_ws.cyber.gold_hosting_predictions h USING (company) WHERE tier <> 'Low signal'"
    ]
   },
   {
@@ -68,6 +68,27 @@
    "displayName": "Infrastructure removed",
    "queryLines": [
     "SELECT CASE rule WHEN 'generated_hostnames' THEN 'Reverse-DNS domains' WHEN 'not_claimed' THEN 'Failed ownership check' WHEN 'subdomain_platform' THEN 'Dynamic DNS / shared hosting' ELSE 'Provider brand or name' END AS reason, count(*) AS domains FROM databricks_demo_ws.cyber.silver_infra_domains GROUP BY rule UNION ALL SELECT 'Network providers (orgs)', count(*) FROM databricks_demo_ws.cyber.silver_providers"
+   ]
+  },
+  {
+   "name": "ai_eval",
+   "displayName": "AI: student vs teacher",
+   "queryLines": [
+    "SELECT CASE WHEN model LIKE 'student%' THEN 'Small model (free)' ELSE 'Claude (paid once)' END AS model, answered_pct, accuracy_where_both_decided_pct AS accuracy_pct, concat(hosting_caught, ' / ', hosting_total) AS hosting_caught, domains FROM databricks_demo_ws.cyber.gold_hosting_eval"
+   ]
+  },
+  {
+   "name": "ai_kpis",
+   "displayName": "AI: headline",
+   "queryLines": [
+    "SELECT max(accuracy_where_both_decided_pct) FILTER (WHERE model LIKE 'student%') AS student_accuracy, max(accuracy_where_both_decided_pct) FILTER (WHERE model LIKE 'teacher%') AS teacher_accuracy, (SELECT count_if(ai_business_type <> 'unsure') FROM databricks_demo_ws.cyber.gold_prospects JOIN databricks_demo_ws.cyber.gold_hosting_predictions USING (company)) AS prospects_classified FROM databricks_demo_ws.cyber.gold_hosting_eval"
+   ]
+  },
+  {
+   "name": "ai_mix",
+   "displayName": "AI: business type of prospects",
+   "queryLines": [
+    "SELECT CASE h.ai_business_type WHEN 'end_organisation' THEN 'Real organisation' WHEN 'hosting_or_isp' THEN 'Hosting / ISP' ELSE 'Not sure' END AS business_type, count(*) AS prospects FROM databricks_demo_ws.cyber.gold_prospects LEFT JOIN databricks_demo_ws.cyber.gold_hosting_predictions h USING (company) WHERE h.ai_business_type <> 'unsure' GROUP BY 1"
    ]
   }
  ],
@@ -517,6 +538,66 @@
     },
     {
      "widget": {
+      "name": "f_business",
+      "queries": [
+       {
+        "name": "f_business_q",
+        "query": {
+         "datasetName": "prospects",
+         "disaggregated": false,
+         "fields": [
+          {
+           "name": "business_type",
+           "expression": "`business_type`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "filter-multi-select",
+       "encodings": {
+        "fields": [
+         {
+          "fieldName": "business_type",
+          "displayName": "Business type (AI)",
+          "queryName": "f_business_q"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Business type (AI)"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 10,
+      "width": 2,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
+      "name": "f_business_note",
+      "multilineTextboxSpec": {
+       "lines": [
+        "**Business type (AI)**: a small model's guess at whether the domain is a real organisation or a hosting/ISP business",
+        "(whose servers belong to its customers). It answers only for domains with 6+ servers. See the *AI classifier* page."
+       ]
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 10,
+      "width": 4,
+      "height": 1
+     }
+    },
+    {
+     "widget": {
       "name": "t_prospects",
       "queries": [
        {
@@ -540,6 +621,10 @@
           {
            "name": "top_reason",
            "expression": "`top_reason`"
+          },
+          {
+           "name": "business_type",
+           "expression": "`business_type`"
           },
           {
            "name": "sector",
@@ -595,6 +680,11 @@
           "displayName": "Top reason"
          },
          {
+          "fieldName": "business_type",
+          "title": "Business type (AI)",
+          "displayName": "Business type (AI)"
+         },
+         {
           "fieldName": "sector",
           "title": "Sector",
           "displayName": "Sector"
@@ -636,7 +726,7 @@
      },
      "position": {
       "x": 0,
-      "y": 10,
+      "y": 11,
       "width": 6,
       "height": 10
      }
@@ -1139,6 +1229,316 @@
       "y": 4,
       "width": 3,
       "height": 7
+     }
+    }
+   ]
+  },
+  {
+   "name": "ai",
+   "displayName": "AI classifier",
+   "layout": [
+    {
+     "widget": {
+      "name": "ai_intro",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## AI classifier: is this a real organisation, or a hosting company?",
+        "Hosting companies and ISPs score high because their *customers'* servers are insecure, but they are not the buyer.",
+        "**Teacher:** Claude labelled 500 top domains once. **Student:** a small model learned that judgement from facts in the",
+        "data, and now runs on every refresh at no AI cost. Both are graded on **90 labels from each domain's About/Contact page**,",
+        "which the student never trained on."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "k_student",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ai_kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "student_accuracy",
+           "expression": "`student_accuracy`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "student_accuracy",
+         "displayName": "Small model: % correct (free)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Small model: % correct (free)"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 3,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_teacher",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ai_kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "teacher_accuracy",
+           "expression": "`teacher_accuracy`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "teacher_accuracy",
+         "displayName": "Claude: % correct (paid once)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Claude: % correct (paid once)"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 3,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "k_classified",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ai_kpis",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "prospects_classified",
+           "expression": "`prospects_classified`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "prospects_classified",
+         "displayName": "Prospects classified by the small model"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Prospects classified by the small model"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 3,
+      "width": 2,
+      "height": 2
+     }
+    },
+    {
+     "widget": {
+      "name": "t_ai_eval",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ai_eval",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "model",
+           "expression": "`model`"
+          },
+          {
+           "name": "answered_pct",
+           "expression": "`answered_pct`"
+          },
+          {
+           "name": "accuracy_pct",
+           "expression": "`accuracy_pct`"
+          },
+          {
+           "name": "hosting_caught",
+           "expression": "`hosting_caught`"
+          },
+          {
+           "name": "domains",
+           "expression": "`domains`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 1,
+       "widgetType": "table",
+       "encodings": {
+        "columns": [
+         {
+          "fieldName": "model",
+          "title": "Model",
+          "displayName": "Model"
+         },
+         {
+          "fieldName": "answered_pct",
+          "title": "Answers given (%)",
+          "displayName": "Answers given (%)"
+         },
+         {
+          "fieldName": "accuracy_pct",
+          "title": "Correct when it answers (%)",
+          "displayName": "Correct when it answers (%)"
+         },
+         {
+          "fieldName": "hosting_caught",
+          "title": "Hosting companies caught",
+          "displayName": "Hosting companies caught"
+         },
+         {
+          "fieldName": "domains",
+          "title": "Held-out domains",
+          "displayName": "Held-out domains"
+         }
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Graded on the same held-out domains",
+        "showDescription": true,
+        "description": "\"Not sure\" answers are not counted as wrong; \"Answers given\" shows how often each one commits."
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 5,
+      "width": 4,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "b_ai_mix",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "ai_mix",
+         "disaggregated": true,
+         "fields": [
+          {
+           "name": "business_type",
+           "expression": "`business_type`"
+          },
+          {
+           "name": "prospects",
+           "expression": "`prospects`"
+          }
+         ]
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "prospects",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Prospects"
+        },
+        "y": {
+         "fieldName": "business_type",
+         "scale": {
+          "type": "categorical",
+          "sort": {
+           "by": "x-reversed"
+          }
+         },
+         "displayName": "Business type"
+        },
+        "label": {
+         "show": true
+        }
+       },
+       "mark": {
+        "colors": [
+         "#56636F"
+        ]
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "What the small model says about prospects"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 5,
+      "width": 2,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "ai_limits",
+      "multilineTextboxSpec": {
+       "lines": [
+        "**Limits, stated plainly.** Claude is clearly better: more often correct, and it answers far more often. The small model only",
+        "answers for domains with 6+ servers, because it learned from top prospects (median 10 servers). On one-server sites it",
+        "was guessing, so they are left as *Not sure*. Covering them would need labels for small domains."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 8,
+      "width": 6,
+      "height": 2
      }
     }
    ]
