@@ -34,6 +34,7 @@ def run(sql, timeout_s=600):
 
 
 if __name__ == '__main__':
+    sys.stdout.reconfigure(encoding='utf-8')  # domain names and titles are in many scripts
     cols, rows = run(sys.argv[1])
     widths = [max(len(str(c)), *(len(str(r[i])) for r in rows)) if rows else len(c) for i, c in enumerate(cols)]
     print(' | '.join(c.ljust(w) for c, w in zip(cols, widths)))

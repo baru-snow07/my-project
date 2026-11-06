@@ -36,6 +36,8 @@ sector = ("CASE WHEN company RLIKE '\\\\.edu|\\\\.ac\\\\.|univ|school|college' T
           "WHEN company RLIKE '\\\\.gov|\\\\.gob\\\\.|\\\\.go\\\\.|\\\\.mil' THEN 'Government' "
           "WHEN company RLIKE 'health|hospital|clinic|medic|pharma' THEN 'Healthcare' "
           "WHEN company RLIKE 'bank|financ|insur|invest|credit' THEN 'Finance' ELSE 'Business' END")
+business_type = ("CASE h.ai_business_type WHEN 'end_organisation' THEN 'Real organisation' "
+                 "WHEN 'hosting_or_isp' THEN 'Hosting / ISP' ELSE 'Not sure' END")
 eval_score = ' + '.join(f'{v} * coalesce({k}, false)::INT' for k, v in EVAL_W.items())
 
 DATASETS = {
@@ -43,8 +45,10 @@ DATASETS = {
         SELECT company, tier, risk_score AS score, {sector} AS sector, country, ips, network_org,
                {top_reason} AS top_reason,
                array_join(exposed_services, ', ') AS exposed_services,
-               array_join(slice(kev_list, 1, 3), ', ') AS known_exploited_cves
-        FROM {T}.gold_prospects WHERE tier <> 'Low signal'"""),
+               array_join(slice(kev_list, 1, 3), ', ') AS known_exploited_cves,
+               {business_type} AS business_type
+        FROM {T}.gold_prospects LEFT JOIN {T}.gold_hosting_predictions h USING (company)
+        WHERE tier <> 'Low signal'"""),
     'kpis': ('Headline counts', f"""
         SELECT count(*) AS accounts,
                count_if(tier = 'Breached / data exposed') AS breached,
@@ -83,6 +87,21 @@ DATASETS = {
                          ELSE 'Provider brand or name' END AS reason, count(*) AS domains
         FROM {T}.silver_infra_domains GROUP BY rule
         UNION ALL SELECT 'Network providers (orgs)', count(*) FROM {T}.silver_providers"""),
+    'ai_eval': ('AI: student vs teacher', f"""
+        SELECT CASE WHEN model LIKE 'student%' THEN 'Small model (free)' ELSE 'Claude (paid once)' END AS model,
+               answered_pct, accuracy_where_both_decided_pct AS accuracy_pct,
+               concat(hosting_caught, ' / ', hosting_total) AS hosting_caught, domains
+        FROM {T}.gold_hosting_eval"""),
+    'ai_kpis': ('AI: headline', f"""
+        SELECT max(accuracy_where_both_decided_pct) FILTER (WHERE model LIKE 'student%') AS student_accuracy,
+               max(accuracy_where_both_decided_pct) FILTER (WHERE model LIKE 'teacher%') AS teacher_accuracy,
+               (SELECT count_if(ai_business_type <> 'unsure') FROM {T}.gold_prospects
+                JOIN {T}.gold_hosting_predictions USING (company)) AS prospects_classified
+        FROM {T}.gold_hosting_eval"""),
+    'ai_mix': ('AI: business type of prospects', f"""
+        SELECT {business_type} AS business_type, count(*) AS prospects
+        FROM {T}.gold_prospects LEFT JOIN {T}.gold_hosting_predictions h USING (company)
+        WHERE h.ai_business_type <> 'unsure' GROUP BY 1"""),
 }
 
 
@@ -159,12 +178,42 @@ Every score is the sum of named signals, so each account comes with its reason t
     multi_filter('f_tier', 'prospects', 'tier', 'Why now', 0, 9),
     multi_filter('f_sector', 'prospects', 'sector', 'Sector', 2, 9),
     multi_filter('f_country', 'prospects', 'country', 'Country', 4, 9),
+    multi_filter('f_business', 'prospects', 'business_type', 'Business type (AI)', 0, 10),
+    text('f_business_note', """
+**Business type (AI)**: a small model's guess at whether the domain is a real organisation or a hosting/ISP business
+(whose servers belong to its customers). It answers only for domains with 6+ servers. See the *AI classifier* page.
+""", 2, 10, 4, 1),
     table('t_prospects', 'prospects', [
         ('company', 'Company'), ('score', 'Score'), ('tier', 'Why now'), ('top_reason', 'Top reason'),
-        ('sector', 'Sector'), ('country', 'Country'), ('ips', 'IPs'),
+        ('business_type', 'Business type (AI)'), ('sector', 'Sector'), ('country', 'Country'), ('ips', 'IPs'),
         ('exposed_services', 'Exposed services'), ('known_exploited_cves', 'Known-exploited CVEs'),
         ('network_org', 'Network owner')],
-        'Accounts to call first', 0, 10, 6, 10, desc='Sorted by score; filter above. Click a column to re-sort.'),
+        'Accounts to call first', 0, 11, 6, 10, desc='Sorted by score; filter above. Click a column to re-sort.'),
+]
+
+ai_page = [
+    text('ai_intro', """
+## AI classifier: is this a real organisation, or a hosting company?
+Hosting companies and ISPs score high because their *customers'* servers are insecure, but they are not the buyer.
+**Teacher:** Claude labelled 500 top domains once. **Student:** a small model learned that judgement from facts in the
+data, and now runs on every refresh at no AI cost. Both are graded on **90 labels from each domain's About/Contact page**,
+which the student never trained on.
+""", 0, 0, 6, 3),
+    counter('k_student', 'ai_kpis', 'student_accuracy', 'Small model: % correct (free)', 0, 3, 2),
+    counter('k_teacher', 'ai_kpis', 'teacher_accuracy', 'Claude: % correct (paid once)', 2, 3, 2),
+    counter('k_classified', 'ai_kpis', 'prospects_classified', 'Prospects classified by the small model', 4, 3, 2),
+    table('t_ai_eval', 'ai_eval', [
+        ('model', 'Model'), ('answered_pct', 'Answers given (%)'), ('accuracy_pct', 'Correct when it answers (%)'),
+        ('hosting_caught', 'Hosting companies caught'), ('domains', 'Held-out domains')],
+        'Graded on the same held-out domains', 0, 5, 4, 3,
+        desc='"Not sure" answers are not counted as wrong; "Answers given" shows how often each one commits.'),
+    hbar('b_ai_mix', 'ai_mix', 'business_type', 'prospects', 'What the small model says about prospects', 4, 5, 2, 3,
+         color=SLATE),
+    text('ai_limits', """
+**Limits, stated plainly.** Claude is clearly better: more often correct, and it answers far more often. The small model only
+answers for domains with 6+ servers, because it learned from top prospects (median 10 servers). On one-server sites it
+was guessing, so they are left as *Not sure*. Covering them would need labels for small domains.
+""", 0, 8, 6, 2),
 ]
 
 signals_page = [
@@ -200,6 +249,7 @@ dashboard = {
         {'name': 'prospects', 'displayName': 'Prospects', 'layout': prospects_page},
         {'name': 'signals', 'displayName': 'Signals', 'layout': signals_page},
         {'name': 'quality', 'displayName': 'Does it work', 'layout': quality_page},
+        {'name': 'ai', 'displayName': 'AI classifier', 'layout': ai_page},
     ],
 }
 with open(OUT, 'w', encoding='utf-8') as f:

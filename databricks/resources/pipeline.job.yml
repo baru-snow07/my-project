@@ -18,5 +18,13 @@ resources:
               schema: ${var.schema}
               source: parquet
               run_llm: "false"
+        - task_key: hosting_classifier
+          depends_on:
+            - task_key: build_gold
+          notebook_task:
+            notebook_path: ../src/hosting_classifier.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
       max_concurrent_runs: 1
       timeout_seconds: 7200
